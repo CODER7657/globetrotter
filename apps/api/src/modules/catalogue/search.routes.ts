@@ -5,6 +5,7 @@ import {
   CatalogueActivitySchema,
   CityQuerySchema,
   CitySchema,
+  FxRateSchema,
   SearchQuerySchema,
   SearchResultSchema,
   envelope,
@@ -44,6 +45,22 @@ const searchRoutes: FastifyPluginAsyncZod = async (app) => {
       const result = await service.search(request.query);
 
       return sendCached(request, reply, { data: result }, SEARCH_CACHE);
+    },
+  );
+
+  app.get(
+    "/fx-rates",
+    {
+      schema: {
+        tags: ["search"],
+        summary: "Latest conversion rate for every currency pair",
+        response: { 200: envelope(FxRateSchema.array()) },
+      },
+    },
+    async (request, reply) => {
+      const rates = await service.fxRates();
+      // Reference data, identical for every caller, so it is safe to share.
+      return sendCached(request, reply, { data: rates }, CATALOGUE_CACHE);
     },
   );
 

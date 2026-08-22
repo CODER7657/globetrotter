@@ -34,3 +34,19 @@ export type Money = z.infer<typeof MoneySchema>;
 
 /** Optimistic concurrency token (issue #17: `If-Match` / 409 on mismatch). */
 export const VersionSchema = z.number().int().positive();
+
+/**
+ * A currency conversion rate: 1 `base` buys `rate` of `quote`.
+ *
+ * Reference data, seeded from `fx_rates`. Exposed so the client can show a
+ * traveller's preferred currency without inventing a rate — the alternative is
+ * relabelling EUR amounts as USD, which is worse than showing EUR.
+ */
+export const FxRateSchema = z.object({
+  base: CurrencyCodeSchema,
+  quote: CurrencyCodeSchema,
+  rate: z.string(),
+  asOf: IsoDateSchema,
+});
+
+export type FxRate = z.infer<typeof FxRateSchema>;

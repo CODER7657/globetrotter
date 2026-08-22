@@ -6,6 +6,7 @@ import { ErrorBoundary } from '../components/error-boundary.js'
 import { Button, EmptyState, ErrorState, SkeletonText } from '../components/primitives.js'
 import { ToastProvider } from '../components/toast.js'
 import { AuthProvider, useAuth } from '../lib/auth.js'
+import { CurrencyProvider } from '../lib/currency.js'
 import { queryClient } from '../lib/query.js'
 import { ThemeProvider } from '../lib/theme.js'
 
@@ -33,7 +34,9 @@ function Providers({ children }: { readonly children: React.ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <AuthProvider>
-            <ToastProvider>{children}</ToastProvider>
+            <CurrencyProvider>
+              <ToastProvider>{children}</ToastProvider>
+            </CurrencyProvider>
           </AuthProvider>
         </ThemeProvider>
       </QueryClientProvider>
@@ -42,7 +45,7 @@ function Providers({ children }: { readonly children: React.ReactNode }) {
 }
 
 /** Public routes that render without a session and without the app shell. */
-const PUBLIC_ROUTES = new Set([...BARE_ROUTES, '/welcome', '/kitchen-sink'])
+const PUBLIC_ROUTES = new Set([...BARE_ROUTES, '/welcome'])
 
 function Shell() {
   const pathname = useRouterState({ select: (state) => state.location.pathname })

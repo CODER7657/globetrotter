@@ -17,8 +17,21 @@ export const NAV: readonly NavItem[] = [
   { to: '/settings', label: 'Settings', glyph: '⚙' },
 ]
 
+/**
+ * Routes that render without app chrome.
+ *
+ * The landing is marketing shown to logged-out visitors — a sidebar and a
+ * bottom tab bar on it would be nonsense, and it carries its own nav and
+ * footer. Everything else gets the shell.
+ */
+const CHROMELESS: readonly string[] = ['/welcome']
+
 export function AppShell({ children }: { readonly children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname })
+
+  if (CHROMELESS.includes(pathname)) {
+    return <>{children}</>
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-background md:flex-row">

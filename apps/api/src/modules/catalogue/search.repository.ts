@@ -284,3 +284,28 @@ export async function listCatalogueActivities(
 
   return query.execute();
 }
+
+export interface FxRateRow {
+  base_code: string;
+  quote_code: string;
+  rate: string;
+  as_of: string;
+}
+
+/**
+ * The newest rate for every pair.
+ *
+ * `fx_rates` is keyed by (base, quote, as_of), so a pair can carry history.
+ * DISTINCT ON takes the most recent row per pair — without it the client would
+ * receive several rates for the same pair and have to pick, which is not a
+ * decision the client has any basis to make.
+ */
+export async function latestFxRates(tx: Tx): Promise<FxRateRow[]> {
+  const result = await sql<FxRateRow>`
+    SELECT DISTINCT ON (base_code, quote_code)
+           base_code, quote_code, rate::text AS rate, as_of::text AS as_of
+      FROM public.fx_rates
+     ORDER BY base_code, quote_code, as_of DESC
+  `.execute(tx);
+  return result.rows;
+}

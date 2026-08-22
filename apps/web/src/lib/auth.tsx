@@ -6,7 +6,7 @@ import type {
 } from '@globetrotter/contracts'
 import { createContext, use, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { ApiError, request } from './api.js'
+import { ApiError, request, setAccessTokenProvider } from './api.js'
 
 /**
  * Session state.
@@ -35,6 +35,12 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {
   const [user, setUser] = useState<PublicUser | null>(null)
   const [status, setStatus] = useState<Status>('loading')
 
+  // Registered once so every call site — including screens that never think
+  // about auth — sends the header.
+  useEffect(() => {
+    setAccessTokenProvider(() => tokenRef.current)
+  }, [])
+
   const adopt = useCallback((session: AuthSession): void => {
     tokenRef.current = session.accessToken
     setUser(session.user)
@@ -47,21 +53,37 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {
     setStatus('anonymous')
   }, [])
 
-  // On boot, try to trade the refresh cookie for a session. A 401 here is the
-  // normal "not signed in" path, not an error worth surfacing.
+  /**
+   * Fires the boot refresh exactly once.
+   *
+   * StrictMode double-invokes effects in development, and refresh tokens rotate
+   * with family revocation. The second call replays a token the first already
+   * spent, the server correctly reads that as theft, and it revokes the whole
+   * family — so the app logged itself out on every load. Verified against a
+   * live API: the second call came back "Session has been revoked".
+   *
+   * A `cancelled` flag is not enough; it only suppresses the setState while
+   * both requests still reach the server. The second request must not happen.
+   */
+  const bootstrapped = useRef(false)
+
+  // A 401 here is the normal "not signed in" path, not an error worth surfacing.
   useEffect(() => {
-    let cancelled = false
+    if (bootstrapped.current) return
+    bootstrapped.current = true
+
+    // Deliberately no `cancelled` flag. Under StrictMode the first mount's
+    // cleanup runs before the remount, so a flag would discard the result of
+    // the only request the guard above allows — leaving status stuck on
+    // 'loading' and the app on its skeleton forever. React 18+ does not warn
+    // about setting state after unmount, so letting it land is correct.
     void (async () => {
       try {
-        const session = await request<AuthSession>('/auth/refresh', { method: 'POST' })
-        if (!cancelled) adopt(session)
+        adopt(await request<AuthSession>('/auth/refresh', { method: 'POST' }))
       } catch {
-        if (!cancelled) clear()
+        clear()
       }
     })()
-    return () => {
-      cancelled = true
-    }
   }, [adopt, clear])
 
   const login = useCallback(

@@ -12,13 +12,13 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as KitchenSinkRouteImport } from './routes/kitchen-sink'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
+import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as TripsIndexRouteImport } from './routes/trips/index'
 import { Route as TripsTripIdRouteImport } from './routes/trips/$tripId'
 import { Route as TripsNewRouteImport } from './routes/trips/new'
@@ -36,11 +36,6 @@ const AdminRoute = AdminRouteImport.update({
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const KitchenSinkRoute = KitchenSinkRouteImport.update({
-  id: '/kitchen-sink',
-  path: '/kitchen-sink',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -73,6 +68,11 @@ const VerifyEmailRoute = VerifyEmailRouteImport.update({
   path: '/verify-email',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TripsIndexRoute = TripsIndexRouteImport.update({
   id: '/trips/',
   path: '/trips/',
@@ -93,13 +93,13 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/kitchen-sink': typeof KitchenSinkRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/welcome': typeof WelcomeRoute
   '/trips/$tripId': typeof TripsTripIdRoute
   '/trips/new': typeof TripsNewRoute
   '/trips/': typeof TripsIndexRoute
@@ -108,13 +108,13 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/kitchen-sink': typeof KitchenSinkRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/welcome': typeof WelcomeRoute
   '/trips/$tripId': typeof TripsTripIdRoute
   '/trips/new': typeof TripsNewRoute
   '/trips': typeof TripsIndexRoute
@@ -124,13 +124,13 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/kitchen-sink': typeof KitchenSinkRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/welcome': typeof WelcomeRoute
   '/trips/$tripId': typeof TripsTripIdRoute
   '/trips/new': typeof TripsNewRoute
   '/trips/': typeof TripsIndexRoute
@@ -141,13 +141,13 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/forgot-password'
-    | '/kitchen-sink'
     | '/login'
     | '/reset-password'
     | '/search'
     | '/settings'
     | '/signup'
     | '/verify-email'
+    | '/welcome'
     | '/trips/$tripId'
     | '/trips/new'
     | '/trips/'
@@ -156,13 +156,13 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/forgot-password'
-    | '/kitchen-sink'
     | '/login'
     | '/reset-password'
     | '/search'
     | '/settings'
     | '/signup'
     | '/verify-email'
+    | '/welcome'
     | '/trips/$tripId'
     | '/trips/new'
     | '/trips'
@@ -171,13 +171,13 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/forgot-password'
-    | '/kitchen-sink'
     | '/login'
     | '/reset-password'
     | '/search'
     | '/settings'
     | '/signup'
     | '/verify-email'
+    | '/welcome'
     | '/trips/$tripId'
     | '/trips/new'
     | '/trips/'
@@ -187,13 +187,13 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
-  KitchenSinkRoute: typeof KitchenSinkRoute
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SearchRoute: typeof SearchRoute
   SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
+  WelcomeRoute: typeof WelcomeRoute
   TripsTripIdRoute: typeof TripsTripIdRoute
   TripsNewRoute: typeof TripsNewRoute
   TripsIndexRoute: typeof TripsIndexRoute
@@ -220,13 +220,6 @@ declare module '@tanstack/react-router' {
       path: '/forgot-password'
       fullPath: '/forgot-password'
       preLoaderRoute: typeof ForgotPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/kitchen-sink': {
-      id: '/kitchen-sink'
-      path: '/kitchen-sink'
-      fullPath: '/kitchen-sink'
-      preLoaderRoute: typeof KitchenSinkRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -271,6 +264,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerifyEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/trips/': {
       id: '/trips/'
       path: '/trips'
@@ -299,13 +299,13 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
-  KitchenSinkRoute: KitchenSinkRoute,
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SearchRoute: SearchRoute,
   SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,
   VerifyEmailRoute: VerifyEmailRoute,
+  WelcomeRoute: WelcomeRoute,
   TripsTripIdRoute: TripsTripIdRoute,
   TripsNewRoute: TripsNewRoute,
   TripsIndexRoute: TripsIndexRoute,

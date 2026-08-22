@@ -141,6 +141,11 @@ describe("no route is accidentally public", () => {
     "GET /api/v1/search",
     "GET /api/v1/cities",
     "GET /api/v1/activities",
+    // Conversion rates: public reference data, seeded, identical for every
+    // caller and carrying no user row. Exposed so the client can honour a
+    // display-currency preference with a real rate instead of relabelling an
+    // amount the database computed in another currency.
+    "GET /api/v1/fx-rates",
   ]);
 
   beforeAll(async () => {

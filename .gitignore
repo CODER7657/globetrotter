@@ -12,3 +12,4 @@ coverage/
 
 # Per-developer Claude Code permissions — not shared
 .claude/settings.local.json
+*.tsbuildinfo
