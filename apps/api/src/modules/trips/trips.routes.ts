@@ -25,6 +25,7 @@ const tripsRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post(
     "/trips",
     {
+      preHandler: app.authenticate,
       schema: {
         tags: ["trips"],
         summary: "Create a trip",
@@ -46,6 +47,7 @@ const tripsRoutes: FastifyPluginAsyncZod = async (app) => {
   app.get(
     "/trips",
     {
+      preHandler: app.authenticate,
       schema: {
         tags: ["trips"],
         summary: "List the caller's trips, newest first",
@@ -62,6 +64,7 @@ const tripsRoutes: FastifyPluginAsyncZod = async (app) => {
   app.get(
     "/trips/:tripId",
     {
+      preHandler: app.authenticate,
       schema: {
         tags: ["trips"],
         summary: "Fetch one trip",
