@@ -71,13 +71,32 @@ export function ErrorState({ title, description, action }: StateProps) {
   )
 }
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive'
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive'
 
 const VARIANTS: Readonly<Record<ButtonVariant, string>> = {
   primary: 'bg-primary text-primary-foreground hover:opacity-90',
   secondary: 'bg-secondary text-secondary-foreground hover:bg-accent',
   ghost: 'text-foreground hover:bg-accent',
   destructive: 'bg-destructive text-destructive-foreground hover:opacity-90',
+}
+
+const BUTTON_BASE =
+  'inline-flex items-center justify-center gap-2 rounded-[var(--radius-md)] px-4 py-2 ' +
+  'text-sm font-medium transition-[opacity,background-color] ' +
+  '[transition-duration:var(--gt-duration-fast)] ' +
+  'disabled:pointer-events-none disabled:opacity-50'
+
+/**
+ * A button's appearance without the `<button>` element.
+ *
+ * Exists for elements that must look like a button but cannot be one — a
+ * landing-page CTA is a link, and nesting a `<button>` inside an `<a>` is
+ * invalid markup that breaks keyboard and screen-reader behaviour. Using this
+ * keeps those anchors and `Button` rendering from a single definition, so
+ * there is never a second button style to drift out of sync.
+ */
+export function buttonClasses(variant: ButtonVariant = 'primary', className = ''): string {
+  return `${BUTTON_BASE} ${VARIANTS[variant]} ${className}`
 }
 
 export function Button({
@@ -91,11 +110,7 @@ export function Button({
   readonly children: ReactNode
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button
-      className={`inline-flex items-center justify-center gap-2 rounded-[var(--radius-md)] px-4 py-2 text-sm font-medium transition-[opacity,background-color] disabled:pointer-events-none disabled:opacity-50 ${VARIANTS[variant]} ${className}`}
-      style={{ transitionDuration: 'var(--gt-duration-fast)' }}
-      {...rest}
-    >
+    <button className={buttonClasses(variant, className)} {...rest}>
       {children}
     </button>
   )

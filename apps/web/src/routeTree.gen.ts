@@ -19,6 +19,7 @@ import { Route as SearchRouteImport } from './routes/search'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
+import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as TripsIndexRouteImport } from './routes/trips/index'
 import { Route as TripsTripIdRouteImport } from './routes/trips/$tripId'
 import { Route as TripsNewRouteImport } from './routes/trips/new'
@@ -73,6 +74,11 @@ const VerifyEmailRoute = VerifyEmailRouteImport.update({
   path: '/verify-email',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TripsIndexRoute = TripsIndexRouteImport.update({
   id: '/trips/',
   path: '/trips/',
@@ -100,6 +106,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/welcome': typeof WelcomeRoute
   '/trips/$tripId': typeof TripsTripIdRoute
   '/trips/new': typeof TripsNewRoute
   '/trips/': typeof TripsIndexRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/welcome': typeof WelcomeRoute
   '/trips/$tripId': typeof TripsTripIdRoute
   '/trips/new': typeof TripsNewRoute
   '/trips': typeof TripsIndexRoute
@@ -131,6 +139,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/welcome': typeof WelcomeRoute
   '/trips/$tripId': typeof TripsTripIdRoute
   '/trips/new': typeof TripsNewRoute
   '/trips/': typeof TripsIndexRoute
@@ -148,6 +157,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/verify-email'
+    | '/welcome'
     | '/trips/$tripId'
     | '/trips/new'
     | '/trips/'
@@ -163,6 +173,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/verify-email'
+    | '/welcome'
     | '/trips/$tripId'
     | '/trips/new'
     | '/trips'
@@ -178,6 +189,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/verify-email'
+    | '/welcome'
     | '/trips/$tripId'
     | '/trips/new'
     | '/trips/'
@@ -194,6 +206,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
+  WelcomeRoute: typeof WelcomeRoute
   TripsTripIdRoute: typeof TripsTripIdRoute
   TripsNewRoute: typeof TripsNewRoute
   TripsIndexRoute: typeof TripsIndexRoute
@@ -271,6 +284,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerifyEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/trips/': {
       id: '/trips/'
       path: '/trips'
@@ -306,6 +326,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,
   VerifyEmailRoute: VerifyEmailRoute,
+  WelcomeRoute: WelcomeRoute,
   TripsTripIdRoute: TripsTripIdRoute,
   TripsNewRoute: TripsNewRoute,
   TripsIndexRoute: TripsIndexRoute,

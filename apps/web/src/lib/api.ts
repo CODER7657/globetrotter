@@ -62,6 +62,8 @@ interface RequestOptions {
   readonly body?: unknown
   readonly accessToken?: string | null
   readonly signal?: AbortSignal
+  /** Optimistic concurrency: sent as `If-Match` so a stale write 409s (#17). */
+  readonly ifMatch?: number
 }
 
 async function readProblem(response: Response): Promise<ProblemDetails | null> {
@@ -80,11 +82,12 @@ async function readProblem(response: Response): Promise<ProblemDetails | null> {
  * cookie the browser must send and JavaScript must never read.
  */
 export async function rawRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, accessToken, signal } = options
+  const { method = 'GET', body, accessToken, signal, ifMatch } = options
 
   const headers: Record<string, string> = { Accept: 'application/json' }
   if (body !== undefined) headers['Content-Type'] = 'application/json'
   if (accessToken != null) headers['Authorization'] = `Bearer ${accessToken}`
+  if (ifMatch !== undefined) headers['If-Match'] = `"${String(ifMatch)}"`
 
   const init: RequestInit = { method, headers, credentials: 'include' }
   if (body !== undefined) init.body = JSON.stringify(body)
@@ -134,4 +137,66 @@ export async function requestPage<T>(
   options: RequestOptions = {},
 ): Promise<Paginated<T>> {
   return rawRequest<Paginated<T>>(path, options)
+}
+
+// ── Convenience helpers ─────────────────────────────────────────────────────
+//
+// These wrap `request` / `requestPage` rather than opening a second client.
+// #65 and #54 both say a duplicate is the thing to avoid: two API layers means
+// two places that decode an envelope, two ApiError shapes, and two chances to
+// get the auth header wrong.
+
+/** GET a single resource, envelope unwrapped. */
+export async function getOne<T>(path: string, accessToken?: string | null): Promise<T> {
+  return request<T>(path, accessToken == null ? {} : { accessToken })
+}
+
+/** GET a list, keeping `page` so the caller can keep paging. */
+export async function getList<T>(
+  path: string,
+  accessToken?: string | null,
+): Promise<Paginated<T>> {
+  return requestPage<T>(path, accessToken == null ? {} : { accessToken })
+}
+
+export async function post<T>(path: string, body: unknown, accessToken?: string | null): Promise<T> {
+  return request<T>(path, { method: 'POST', body, ...(accessToken == null ? {} : { accessToken }) })
+}
+
+/**
+ * PATCH with optimistic concurrency. The API hands the version back as an ETag
+ * on GET (#17); sending it as `If-Match` is what makes a concurrent edit fail
+ * loudly instead of silently overwriting someone else's change.
+ */
+export async function patch<T>(
+  path: string,
+  body: unknown,
+  version?: number,
+  accessToken?: string | null,
+): Promise<T> {
+  return request<T>(path, {
+    method: 'PATCH',
+    body,
+    ...(version === undefined ? {} : { ifMatch: version }),
+    ...(accessToken == null ? {} : { accessToken }),
+  })
+}
+
+export async function del(path: string, version?: number, accessToken?: string | null): Promise<void> {
+  return request<void>(path, {
+    method: 'DELETE',
+    ...(version === undefined ? {} : { ifMatch: version }),
+    ...(accessToken == null ? {} : { accessToken }),
+  })
+}
+
+/** Build a query string, dropping empty values so URLs stay readable. */
+export function query(params: Record<string, string | number | undefined | null>): string {
+  const search = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === '') continue
+    search.set(key, String(value))
+  }
+  const qs = search.toString()
+  return qs === '' ? '' : `?${qs}`
 }

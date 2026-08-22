@@ -63,14 +63,21 @@ Plus `chart-1`…`chart-5` and the eight `sidebar-*` tokens. All 32 in both them
 ### Three things that look like mistakes and are not
 
 **`--accent` is not the brand accent.** In shadcn's vocabulary `--accent` is the
-muted hover/active surface — a near-grey. Our sunset brand colour is
-**`--primary`**. Hero CTAs, the active nav item and focus rings all come from
-`--primary`. Reach for `--accent` expecting sunset and you will get grey.
+muted hover/active surface — a near-grey. The brand surface is **`--primary`**,
+which hero CTAs and the active nav item come from.
 
-**`--ring` is not `--primary` in light mode.** Sunset at `L 0.70` scores 2.84:1
-on white; focus indicators need 3:1 (WCAG 2.4.11). The light ring is a darker
-`L 0.66`. In dark mode the two coincide legitimately. Never write
-`--ring: var(--primary)` — a test fails if you do.
+**There is no brand hue in the chrome.** Since #62 the palette is Velorah:
+`--primary` sits at the extremes of the neutral ramp — white on near-black,
+near-black on white. Colour enters only through imagery, the `gradient.*` stops
+and the charts. Reaching for `--accent` expecting a colour gets you grey; so
+does reaching for `--primary`.
+
+**`--ring` is never `--primary`.** A focus ring the same colour as the button it
+sits on is invisible on that button — and with `--primary` now monochrome, a
+matching ring would vanish on every primary button. `--ring` stays on `sunset`
+in both themes; in an otherwise monochrome system, a hue nothing else uses is
+what makes focus unmistakable. Never write `--ring: var(--primary)` — a test
+fails if you do.
 
 **`--border` and `--input` diverge.** shadcn ships both at the same subtle value.
 That is right for a decorative card edge, which WCAG 1.4.11 exempts, and wrong
