@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   STRONG_PASSWORD,
+  adminQuery,
   asUser,
   buildTestApp,
   closeHarness,
@@ -53,7 +54,7 @@ describe("auth", () => {
       expect(body.data.user).toMatchObject({
         email: "ada@example.test",
         displayName: "Ada",
-        role: "user",
+        role: "traveler",
         emailVerifiedAt: null,
       });
     });
@@ -82,10 +83,12 @@ describe("auth", () => {
         displayName: "Ada",
       });
 
-      const rows = await app.db
-        .selectFrom("users")
-        .select("password_hash")
-        .execute();
+      // app.db connects as globetrotter_app, which is subject to RLS — with no
+      // identity on the transaction it correctly sees zero rows. Reading a
+      // stored hash is a fixture concern, so it goes through the admin pool.
+      const rows = await adminQuery<{ password_hash: string }>(
+        "SELECT password_hash FROM users WHERE email = $1", ["ada@example.test"],
+      );
 
       expect(rows[0]?.password_hash).not.toContain(STRONG_PASSWORD);
       // Argon2id encoded hashes are self-describing.

@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { SignJWT, jwtVerify } from "jose";
-import { UserId } from "@globetrotter/contracts";
+import { UserId, UserRoleSchema } from "@globetrotter/contracts";
 import { UnauthenticatedError } from "./errors.js";
 import type { UserRole } from "@globetrotter/contracts";
 import type { Config } from "../config.js";
@@ -67,13 +67,19 @@ export function createTokens(config: Config): Tokens {
       }
 
       const userId = UserId.safeParse(payload.sub);
-      const role = payload["role"];
+      // Parse against the shared schema rather than re-listing the variants.
+      // This previously hardcoded "user", which no longer exists in the
+      // user_role enum ("traveler" | "admin") — every access token failed to
+      // verify and every authenticated route returned 401. Duplicating an enum
+      // the contracts package already owns is exactly the drift it exists to
+      // prevent, so it now reads from the single source of truth.
+      const role = UserRoleSchema.safeParse(payload["role"]);
 
-      if (!userId.success || (role !== "user" && role !== "admin")) {
+      if (!userId.success || !role.success) {
         throw new UnauthenticatedError("Malformed access token claims");
       }
 
-      return { userId: userId.data, role };
+      return { userId: userId.data, role: role.data };
     },
 
     mintRefreshToken() {

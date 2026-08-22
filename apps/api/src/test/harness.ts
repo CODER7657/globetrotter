@@ -56,6 +56,19 @@ export async function buildTestApp(
   return buildApp(config);
 }
 
+/**
+ * Fixture-only escape hatch. Runs as the superuser, so it bypasses RLS — use it
+ * to ARRANGE and ASSERT on stored state, never to exercise a code path. Any
+ * test that reaches through this to make an app behaviour pass is lying.
+ */
+export async function adminQuery<T extends Record<string, unknown>>(
+  sql: string,
+  params: unknown[] = [],
+): Promise<T[]> {
+  const result = await admin().query(sql, params);
+  return result.rows as T[];
+}
+
 /** Closes the fixture connection. Call from afterAll alongside app.close(). */
 export async function closeHarness(): Promise<void> {
   await adminPool?.end();
