@@ -189,48 +189,113 @@ function Timeline({ days }: { readonly days: readonly DayCell[] }) {
   )
 }
 
+/** Stay window for the expanded day cell. UTC, like every other date here. */
+const STAY = new Intl.DateTimeFormat(undefined, {
+  day: 'numeric',
+  month: 'short',
+  timeZone: 'UTC',
+})
+
+function formatStay(stop: TripStop): string {
+  return `${STAY.format(new Date(stop.arrivesAt))} – ${STAY.format(new Date(stop.departsAt))}`
+}
+
+const FULL_DAY = new Intl.DateTimeFormat(undefined, {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+})
+
 function Calendar({ days }: { readonly days: readonly DayCell[] }) {
+  // Selection, not navigation. The previous version linked each cell to
+  // #day-N, which scrolled the timeline but left the calendar itself inert —
+  // a month grid whose dates could not actually be picked.
+  const [selected, setSelected] = useState<number | null>(days[0]?.ms ?? null)
+
   const first = days[0]
   if (first === undefined) return null
 
   // Pad to a Monday-first grid so the columns line up with a real month view.
   const firstDate = new Date(first.ms)
   const weekday = (firstDate.getUTCDay() + 6) % 7
-  const blanks = Array.from({ length: weekday }, (_, i) => i)
+  const blanks = Array.from({ length: weekday }, (_, index) => index)
+  const chosen = days.find((day) => day.ms === selected)
 
   return (
     <div>
       <h3 className="mb-2 text-sm font-semibold text-foreground">
         {MONTH_LABEL.format(firstDate)}
       </h3>
-      <div className="grid grid-cols-7 gap-1">
+
+      <div role="grid" aria-label="Trip calendar" className="grid grid-cols-7 gap-1">
         {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map((label) => (
-          <div key={label} className="pb-1 text-center text-[10px] text-muted-foreground">
+          <div key={label} role="columnheader" className="pb-1 text-center text-[10px] text-muted-foreground">
             {label}
           </div>
         ))}
         {blanks.map((key) => (
-          <div key={`blank-${String(key)}`} />
+          <div key={`blank-${String(key)}`} role="presentation" />
         ))}
-        {days.map((day, index) => (
-          <a
-            key={day.ms}
-            href={`#${dayAnchor(index)}`}
-            className={`min-h-16 rounded-[var(--radius-sm)] border p-1.5 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)] ${
-              day.stop === undefined
-                ? 'border-dashed border-border text-muted-foreground'
-                : 'border-border bg-card'
-            }`}
-          >
-            <span className="block text-[10px] tabular-nums text-muted-foreground">
-              {new Date(day.ms).getUTCDate()}
-            </span>
-            <span className="mt-0.5 block truncate text-[11px] text-card-foreground">
-              {day.cityName || '—'}
-            </span>
-          </a>
-        ))}
+        {days.map((day, index) => {
+          const isSelected = day.ms === selected
+          return (
+            <button
+              key={day.ms}
+              type="button"
+              role="gridcell"
+              aria-selected={isSelected}
+              aria-label={`${FULL_DAY.format(new Date(day.ms))}${
+                day.cityName === '' ? ', in transit' : `, ${day.cityName}`
+              }`}
+              onClick={() => {
+                setSelected(day.ms)
+                // Keep the timeline in step, so switching back lands in place.
+                document.getElementById(dayAnchor(index))?.scrollIntoView({ block: 'start' })
+              }}
+              className={`min-h-16 rounded-[var(--radius-sm)] border p-1.5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)] ${
+                isSelected
+                  ? 'border-primary bg-accent'
+                  : day.stop === undefined
+                    ? 'border-dashed border-border text-muted-foreground hover:bg-accent'
+                    : 'border-border bg-card hover:bg-accent'
+              }`}
+              style={{ transitionDuration: 'var(--gt-duration-fast)' }}
+            >
+              <span className="block text-[10px] tabular-nums text-muted-foreground">
+                {new Date(day.ms).getUTCDate()}
+              </span>
+              <span className="mt-0.5 block truncate text-[11px] text-card-foreground">
+                {day.cityName || '—'}
+              </span>
+            </button>
+          )
+        })}
       </div>
+
+      {/* The expanded cell. A month grid that cannot show a day's detail is a picture of a month. */}
+      {chosen !== undefined && (
+        <section
+          aria-live="polite"
+          className="mt-4 rounded-[var(--radius-lg)] border border-border bg-card p-4"
+        >
+          <h4 className="text-sm font-semibold text-card-foreground">
+            {FULL_DAY.format(new Date(chosen.ms))}
+          </h4>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {chosen.stop === undefined
+              ? 'In transit — no stay booked for this day.'
+              : `Staying in ${chosen.cityName}${chosen.isArrival ? ' — arrival day' : ''}.`}
+          </p>
+          {chosen.stop !== undefined && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Stay runs {formatStay(chosen.stop)}
+              {chosen.stop.arrivalMode === null ? '' : ` · arrived by ${chosen.stop.arrivalMode}`}
+            </p>
+          )}
+        </section>
+      )}
     </div>
   )
 }
