@@ -30,3 +30,59 @@
     outline-offset: 2px;
   }
 }
+
+@layer utilities {
+  /*
+   * Staggered entrance. Built from the motion tokens, so the reduced-motion
+   * block in theme.css collapses it to 1ms without this knowing about it.
+   *
+   * `backwards` matters: without it an element with a delay paints at its final
+   * opacity for the length of the delay, then jumps back to start.
+   */
+  @keyframes gt-rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .gt-rise {
+    animation: gt-rise var(--gt-duration-base) var(--gt-easing-out) backwards;
+  }
+}
+
+/*
+ * Travellers print itineraries. Drop the chrome, force light ink on white
+ * regardless of the on-screen theme, and stop sticky headers repeating on
+ * every page — position: sticky inside a printed flow reprints the header.
+ */
+@media print {
+  nav,
+  aside,
+  header button,
+  .gt-no-print {
+    display: none !important;
+  }
+
+  .gt-print-flat :is(h3, .sticky) {
+    position: static !important;
+    backdrop-filter: none !important;
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  a[href^='#'] {
+    text-decoration: none;
+  }
+
+  li {
+    break-inside: avoid;
+  }
+}
