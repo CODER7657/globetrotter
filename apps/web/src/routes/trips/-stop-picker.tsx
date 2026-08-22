@@ -32,13 +32,19 @@ export function StopPicker({
 
   const { data, isFetching, isError } = useSearch(debounced, 'city')
 
+  // `suggestions` is populated only when `hits` is empty — popular fallbacks so
+  // a miss is never a dead end.
+  const hits = data?.hits ?? []
+  const suggestions = data?.suggestions ?? []
+  const shown = hits.length > 0 ? hits : suggestions
+
   // Remember every name we see, so a stop added from this list can be labelled
   // without another round trip.
   useEffect(() => {
-    for (const hit of data ?? []) {
+    for (const hit of shown) {
       if (hit.kind === 'city') onCityKnown(hit.id, hit.name)
     }
-  }, [data, onCityKnown])
+  }, [shown, onCityKnown])
 
   return (
     <aside aria-label="Add a stop" className="lg:sticky lg:top-4 lg:self-start">
@@ -71,11 +77,15 @@ export function StopPicker({
 
         {isError && (
           <p className="text-xs text-muted-foreground">
-            Search is unavailable — the endpoint ships in #70.
+            Search is unavailable right now.
           </p>
         )}
 
-        {(data ?? []).map((hit) => (
+        {hits.length === 0 && suggestions.length > 0 && (
+          <p className="text-xs text-muted-foreground">No exact match — popular cities instead.</p>
+        )}
+
+        {shown.map((hit) => (
           <button
             key={hit.id}
             type="button"
@@ -95,7 +105,7 @@ export function StopPicker({
               can confirm it is what they meant, rather than presenting a
               typo-match with the same confidence as an exact one.
             */}
-            {!hit.matchedBy.includes('fulltext') && hit.matchedBy.includes('trigram') && (
+            {!hit.matchedBy.includes('fulltext') && hit.matchedBy.includes('fuzzy') && (
               <span className="shrink-0 rounded-[var(--radius-sm)] bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
                 did you mean?
               </span>

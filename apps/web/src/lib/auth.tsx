@@ -47,9 +47,25 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {
     setStatus('anonymous')
   }, [])
 
-  // On boot, try to trade the refresh cookie for a session. A 401 here is the
-  // normal "not signed in" path, not an error worth surfacing.
+  /**
+   * Fires the boot refresh exactly once.
+   *
+   * StrictMode double-invokes effects in development, and refresh tokens rotate
+   * with family revocation. The second call replays a token the first already
+   * spent, the server correctly reads that as theft, and it revokes the whole
+   * family — so the app logged itself out on every load. Verified against a
+   * live API: the second call came back "Session has been revoked".
+   *
+   * A `cancelled` flag is not enough; it only suppresses the setState while
+   * both requests still reach the server. The second request must not happen.
+   */
+  const bootstrapped = useRef(false)
+
+  // A 401 here is the normal "not signed in" path, not an error worth surfacing.
   useEffect(() => {
+    if (bootstrapped.current) return
+    bootstrapped.current = true
+
     let cancelled = false
     void (async () => {
       try {

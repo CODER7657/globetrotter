@@ -1,6 +1,8 @@
 import type {
+  CostBreakdown,
   Paginated,
   ReorderStopsBody,
+  SearchResult,
   Trip,
   TripStop,
 } from '@globetrotter/contracts'
@@ -8,8 +10,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { request, requestPage } from './api.js'
 import { useAuth } from './auth.js'
-// TEMPORARY: owned by packages/contracts in PR #70. See pending-contracts.ts.
-import type { CostBreakdown, SearchHit } from './pending-contracts.js'
 
 /**
  * Trip data access.
@@ -92,8 +92,6 @@ export function useCost(tripId: string) {
     queryKey: ['trip', tripId, 'cost'],
     queryFn: () => get<CostBreakdown>(`/trips/${tripId}/cost`),
     enabled: status === 'authenticated' && tripId !== '',
-    // The endpoint ships in #70. Until it merges this 404s; a retry storm
-    // behind a loading state helps nobody.
     retry: false,
   })
 }
@@ -103,12 +101,12 @@ export function useSearch(query: string, kind: 'all' | 'city' | 'activity' = 'ci
   const { status } = useAuth()
   const trimmed = query.trim()
 
-  return useQuery<SearchHit[]>({
+  // Verified against a live response: the body is
+  // { query, hits, page, suggestions } inside the envelope, not a bare array.
+  return useQuery<SearchResult>({
     queryKey: ['search', kind, trimmed],
     queryFn: () =>
-      get<SearchHit[]>(
-        `/search?q=${encodeURIComponent(trimmed)}&kind=${kind}&limit=8`,
-      ),
+      get<SearchResult>(`/search?q=${encodeURIComponent(trimmed)}&kind=${kind}&limit=8`),
     enabled: status === 'authenticated' && trimmed.length >= 2,
     retry: false,
     staleTime: 60_000,
