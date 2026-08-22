@@ -13,6 +13,7 @@ import { API_PREFIX } from "./core/constants.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 import healthRoutes from "./modules/health/health.routes.js";
 import activitiesRoutes from "./modules/trips/activities.routes.js";
+import collaboratorsRoutes from "./modules/trips/collaborators.routes.js";
 import sharingRoutes from "./modules/sharing/sharing.routes.js";
 import costRoutes from "./modules/trips/cost.routes.js";
 import searchRoutes from "./modules/catalogue/search.routes.js";
@@ -115,6 +116,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
   await app.register(tripsRoutes, { prefix: API_PREFIX });
   await app.register(stopsRoutes, { prefix: API_PREFIX });
   await app.register(activitiesRoutes, { prefix: API_PREFIX });
+  await app.register(collaboratorsRoutes, { prefix: API_PREFIX });
   await app.register(costRoutes, { prefix: API_PREFIX });
   await app.register(searchRoutes, { prefix: API_PREFIX });
   await app.register(realtimeRoutes, { prefix: API_PREFIX, config });
