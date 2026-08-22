@@ -10,6 +10,7 @@ import {
   insertRefreshToken,
   insertUser,
   markTokenConsumed,
+  touchLastLogin,
   revokeFamily,
 } from "./auth.repository.js";
 import type { AuthSession, LoginBody, PublicUser, SignupBody, UserId } from "@globetrotter/contracts";
@@ -123,6 +124,11 @@ export function createAuthService(withTx: WithTx, tokens: Tokens): AuthService {
           throw error;
         });
 
+        // A signup IS a sign-in — the account is authenticated from this
+        // moment. Stamping it only on /auth/login would leave every
+        // brand-new user absent from DAU until their second visit.
+        await touchLastLogin(trx, user.id);
+
         // insertUser already adopted the new id, which the WITH CHECK on
         // rtf_owner requires before a family may be created.
         const familyId = await createTokenFamily(trx, user.id, userAgent);
@@ -143,6 +149,7 @@ export function createAuthService(withTx: WithTx, tokens: Tokens): AuthService {
         // The caller is authenticated as of this line; publish the identity so
         // the family INSERT satisfies rtf_owner.
         await adoptIdentity(trx, user.id);
+        await touchLastLogin(trx, user.id);
 
         const familyId = await createTokenFamily(trx, user.id, userAgent);
         return issue(user, familyId, trx);
@@ -198,6 +205,7 @@ export function createAuthService(withTx: WithTx, tokens: Tokens): AuthService {
         // Mark the old token consumed only once its replacement exists, so a
         // failure part-way cannot strand the user with no valid token.
         await markTokenConsumed(trx, found.tokenId);
+        await touchLastLogin(trx, found.userId);
 
         return { kind: "ok", issued };
       });

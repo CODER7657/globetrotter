@@ -154,6 +154,31 @@ export interface TripActivitiesTable {
   updated_at: Managed;
 }
 
+/**
+ * The `trip_cost_summary` VIEW (011), not a table.
+ *
+ * `security_invoker = true`, so it runs as the caller and the trips policies
+ * apply verbatim — the API selects from it with no `WHERE owner_id` at all.
+ * Filtering by owner by hand would be both a leak risk and wrong: it would
+ * hide trips a collaborator legitimately sees.
+ */
+export interface TripCostSummaryView {
+  trip_id: string;
+  owner_id: string;
+  name: string;
+  status: TripStatus;
+  visibility: TripVisibility;
+  base_currency: string;
+  budget_cap: string | null;
+  cover_image_url: string | null;
+  start_date: string;
+  end_date: string;
+  total_days: number;
+  stop_count: number;
+  activity_count: number;
+  total_cost: string;
+}
+
 export interface TripCollaboratorsTable {
   trip_id: string;
   user_id: string;
@@ -190,6 +215,7 @@ export interface Database {
   trip_stops: TripStopsTable;
   trip_activities: TripActivitiesTable;
   trip_collaborators: TripCollaboratorsTable;
+  trip_cost_summary: TripCostSummaryView;
   trip_shares: TripSharesTable;
   trip_presence: TripPresenceTable;
 }

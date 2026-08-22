@@ -224,3 +224,20 @@ export async function revokeFamily(
     .where("revoked_at", "is", null)
     .execute();
 }
+
+/**
+ * Stamps `users.last_login_at`.
+ *
+ * Nothing wrote this column before — it was declared in 002_identity and never
+ * set, so any DAU/WAU built on it would have been permanently zero. Called
+ * from both login and refresh: a live session rotating its token is a user
+ * who is present, and counting only fresh logins would undercount anyone who
+ * stays signed in.
+ */
+export async function touchLastLogin(trx: Tx, userId: string): Promise<void> {
+  await trx
+    .updateTable("users")
+    .set({ last_login_at: new Date() })
+    .where("id", "=", userId)
+    .execute();
+}
