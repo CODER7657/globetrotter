@@ -1,0 +1,32 @@
+@import 'tailwindcss';
+
+/*
+ * The design system owns every colour, space, radius, shadow and duration.
+ * theme.css is generated from packages/design-system/tokens.json — it carries
+ * the @theme inline mapping Tailwind v4 needs, plus the :root and .dark layers.
+ *
+ * Do not declare a token here. Do not write a hex value anywhere in this app.
+ */
+@import '@globetrotter/design-system/theme.css';
+
+/* Dark mode is a class on <html>, set before first paint in index.html. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--gt-font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Focus is never removed, only restyled — #32 depends on this holding. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
