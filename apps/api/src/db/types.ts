@@ -15,18 +15,35 @@ export interface UsersTable {
   email: string;
   password_hash: string;
   display_name: string;
-  role: "user" | "admin";
+  /** Defaults to 'user' in SQL, so it is optional on insert. */
+  role: Generated<"user" | "admin">;
   email_verified_at: Timestamp | null;
   deleted_at: Timestamp | null;
   created_at: CreatedAt;
   updated_at: Timestamp;
 }
 
+export type TokenRevokeReason =
+  | "logout"
+  | "replay_detected"
+  | "password_changed"
+  | "admin_revoked";
+
 export interface RefreshTokenFamiliesTable {
   id: Generated<string>;
   user_id: string;
-  token_hash: string;
   revoked_at: Timestamp | null;
+  revoked_reason: TokenRevokeReason | null;
+  user_agent: string | null;
+  created_at: CreatedAt;
+}
+
+export interface RefreshTokensTable {
+  id: Generated<string>;
+  family_id: string;
+  token_hash: string;
+  used_at: Timestamp | null;
+  replaced_by: string | null;
   expires_at: Timestamp;
   created_at: CreatedAt;
 }
@@ -89,6 +106,7 @@ export interface TripActivitiesTable {
 export interface Database {
   users: UsersTable;
   refresh_token_families: RefreshTokenFamiliesTable;
+  refresh_tokens: RefreshTokensTable;
   cities: CitiesTable;
   activities: ActivitiesTable;
   trips: TripsTable;

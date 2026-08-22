@@ -21,5 +21,18 @@ services:
       timeout: 3s
       retries: 20
 
+  # Catches every outbound email locally: nothing escapes to a real inbox, and
+  # verification links are demoable on stage with no network (issue #15).
+  # @pavan's #9 supersedes this compose file; this service should carry over.
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: globetrotter-mail
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # web UI -> http://127.0.0.1:8025
+    logging:
+      # MailHog logs every SMTP conversation at INFO; it drowns the compose log.
+      driver: none
+
 volumes:
   db-data:

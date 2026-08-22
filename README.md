@@ -15,7 +15,8 @@ pnpm db:migrate
 pnpm dev
 ```
 
-The API listens on <http://127.0.0.1:3000>. Check it is alive:
+The API listens on <http://127.0.0.1:3000>, and MailHog's inbox is at
+<http://127.0.0.1:8025>. Check the API is alive:
 
 ```bash
 curl http://127.0.0.1:3000/ready
@@ -52,8 +53,20 @@ Row-Level Security actually applies — a superuser connection bypasses every RL
 policy silently, which makes the whole authorization layer a no-op. Migrations
 and test fixtures use the owner connection via `ADMIN_DATABASE_URL`.
 
+## Auth
+
+Access tokens are short-lived JWTs sent as `Authorization: Bearer`. The refresh
+token lives only in an `httpOnly` cookie and is rotated on every use — if a
+rotated token is ever presented again, the entire token family is revoked, on
+the assumption that it leaked.
+
+```bash
+curl -X POST http://127.0.0.1:3000/api/v1/auth/signup -H 'content-type: application/json' -d '{"email":"you@example.test","password":"correct-horse-battery-staple-72","displayName":"You"}'
+```
+
 ## Architecture
 
-See [the backend skeleton design](docs/superpowers/specs/2026-08-22-backend-skeleton-design.md)
-for the layering rules, the error model, and what is deliberately left as a
-seam for later issues.
+- [Backend skeleton](docs/superpowers/specs/2026-08-22-backend-skeleton-design.md)
+  — layering rules, error model, and the seams left for later issues.
+- [Auth](docs/superpowers/specs/2026-08-22-auth-design.md) — token design,
+  rotation and replay handling, and why login is timing-safe.

@@ -14,12 +14,14 @@ export class AppError extends Error {
   constructor(
     code: ErrorCode,
     message: string,
-    options: { fieldErrors?: FieldError[]; cause?: unknown } = {},
+    options: { fieldErrors?: FieldError[]; cause?: unknown; status?: number } = {},
   ) {
     super(message, options.cause === undefined ? undefined : { cause: options.cause });
     this.name = new.target.name;
     this.code = code;
-    this.status = ERROR_STATUS[code];
+    // Usually derived from the code; overridden only when an upstream error
+    // already chose a status we should preserve (see toAppError).
+    this.status = options.status ?? ERROR_STATUS[code];
     this.fieldErrors = options.fieldErrors;
     Error.captureStackTrace(this, new.target);
   }
@@ -80,6 +82,30 @@ const PG_CODE_MAP: Record<string, { code: ErrorCode; message: string }> = {
   "23514": { code: ErrorCode.VALIDATION_FAILED, message: "A value failed a database constraint" },
 };
 
+/**
+ * Statuses chosen by Fastify itself or by a plugin — rate limiting, payload
+ * limits, malformed JSON. Without this map every one of them was reported as
+ * a 500, which is both wrong and actively misleading: a client being rate
+ * limited would retry against what looks like a server fault.
+ */
+const HTTP_STATUS_TO_CODE: Record<number, ErrorCode> = {
+  400: ErrorCode.VALIDATION_FAILED,
+  401: ErrorCode.UNAUTHENTICATED,
+  403: ErrorCode.FORBIDDEN,
+  404: ErrorCode.NOT_FOUND,
+  409: ErrorCode.DUPLICATE,
+  413: ErrorCode.PAYLOAD_TOO_LARGE,
+  415: ErrorCode.VALIDATION_FAILED,
+  422: ErrorCode.VALIDATION_FAILED,
+  429: ErrorCode.RATE_LIMITED,
+};
+
+function httpStatusOf(error: unknown): number | undefined {
+  if (typeof error !== "object" || error === null) return undefined;
+  const status: unknown = (error as { statusCode?: unknown }).statusCode;
+  return typeof status === "number" ? status : undefined;
+}
+
 function pgErrorCode(error: unknown): string | undefined {
   if (typeof error !== "object" || error === null) return undefined;
   const code: unknown = (error as { code?: unknown }).code;
@@ -99,6 +125,16 @@ export function toAppError(error: unknown): AppError {
     if (mapped !== undefined) {
       return new ConflictError(mapped.code, mapped.message, error);
     }
+  }
+
+  // Preserve a 4xx an upstream layer already decided on. 5xx deliberately
+  // falls through to InternalError so its message is never echoed back.
+  const status = httpStatusOf(error);
+  if (status !== undefined && status >= 400 && status < 500) {
+    const code = HTTP_STATUS_TO_CODE[status] ?? ErrorCode.VALIDATION_FAILED;
+    const message =
+      error instanceof Error ? error.message : "Request could not be processed";
+    return new AppError(code, message, { cause: error, status });
   }
 
   return new InternalError("Internal server error", error);
