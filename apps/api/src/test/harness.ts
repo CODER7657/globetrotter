@@ -20,12 +20,12 @@ import type { UserId } from "@globetrotter/contracts";
  */
 
 const TEST_DATABASE_URL =
-  process.env["TEST_DATABASE_URL"] ??
-  "postgres://globetrotter_app:globetrotter_app@127.0.0.1:5433/globetrotter";
+  process.env["APP_DATABASE_URL"] ??
+  "postgresql://globetrotter_app:globetrotter_app@127.0.0.1:5432/globetrotter";
 
 const ADMIN_DATABASE_URL =
-  process.env["ADMIN_DATABASE_URL"] ??
-  "postgres://globetrotter:globetrotter@127.0.0.1:5433/globetrotter";
+  process.env["DATABASE_URL"] ??
+  "postgresql://postgres:postgres@127.0.0.1:5432/globetrotter";
 
 let adminPool: pg.Pool | undefined;
 
@@ -38,7 +38,7 @@ export async function buildTestApp(): Promise<FastifyInstance> {
   const config = loadConfig({
     NODE_ENV: "test",
     LOG_LEVEL: "silent",
-    DATABASE_URL: TEST_DATABASE_URL,
+    APP_DATABASE_URL: TEST_DATABASE_URL,
     CORS_ORIGINS: "http://localhost:5173",
   });
 
@@ -73,10 +73,17 @@ export async function seedUser(): Promise<SeededUser> {
   return { id: row.id as UserId, email };
 }
 
+/**
+ * The catalog is read-only to the API role, so cities are seeded through the
+ * admin connection. Until @pavan's #8 lands there is no city data at all.
+ */
 export async function seedCity(name = "Lisbon", countryCode = "PT"): Promise<string> {
   const { rows } = await admin().query<{ id: string }>(
-    `INSERT INTO cities (name, country_code) VALUES ($1, $2) RETURNING id`,
-    [name, countryCode],
+    `INSERT INTO cities (country_code, name, slug, latitude, longitude, timezone)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING id`,
+    [countryCode, name, `${name.toLowerCase()}-${randomUUID().slice(0, 8)}`,
+     "38.7223", "-9.1393", "Europe/Lisbon"],
   );
 
   const row = rows[0];
@@ -95,7 +102,8 @@ export async function seedCity(name = "Lisbon", countryCode = "PT"): Promise<str
 export async function truncateAll(): Promise<void> {
   await admin().query(
     `TRUNCATE TABLE
-       trip_activities, trip_stops, trips, activities, cities, users
+       trip_activities, trip_stops, trip_collaborators, trip_shares,
+       trips, refresh_tokens, refresh_token_families, cities, users
      RESTART IDENTITY CASCADE`,
   );
 }

@@ -38,7 +38,7 @@ declare module "fastify" {
 
 async function databasePlugin(app: FastifyInstance, config: Config): Promise<void> {
   const pool = new pg.Pool({
-    connectionString: config.DATABASE_URL,
+    connectionString: config.APP_DATABASE_URL,
     max: config.DATABASE_POOL_MAX,
     // A runaway query must not hold a pool slot forever.
     statement_timeout: config.DATABASE_STATEMENT_TIMEOUT_MS,

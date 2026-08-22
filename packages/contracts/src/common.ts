@@ -13,12 +13,24 @@ export const IsoDateTimeSchema = z.string().datetime({ offset: true });
  * Postgres `NUMERIC(12,2)` stores it. Parsing to `number` anywhere in the
  * stack is a bug.
  */
+export const MoneyAmountSchema = z
+  .string()
+  .regex(/^-?\d{1,10}(\.\d{1,2})?$/, "invalid decimal");
+
+/** ISO-4217, and a FK to `currencies.code` in the database. */
+export const CurrencyCodeSchema = z
+  .string()
+  .length(3)
+  .regex(/^[A-Za-z]{3}$/, "must be a 3-letter currency code")
+  .transform((v) => v.toUpperCase());
+
+/** An amount paired with its currency. */
 export const MoneySchema = z.object({
-  amount: z.string().regex(/^-?\d{1,10}(\.\d{1,2})?$/, "invalid decimal"),
-  currency: z.string().length(3).toUpperCase(),
+  amount: MoneyAmountSchema,
+  currency: CurrencyCodeSchema,
 });
 
 export type Money = z.infer<typeof MoneySchema>;
 
 /** Optimistic concurrency token (issue #17: `If-Match` / 409 on mismatch). */
-export const VersionSchema = z.number().int().nonnegative();
+export const VersionSchema = z.number().int().positive();

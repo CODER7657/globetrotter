@@ -10,7 +10,12 @@ const ConfigSchema = z.object({
   HOST: z.string().default("0.0.0.0"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
 
-  DATABASE_URL: z.string().url(),
+  /**
+   * The API connects as globetrotter_app (NOSUPERUSER NOBYPASSRLS), NOT as the
+   * superuser in DATABASE_URL. That is what makes RLS the authorization layer
+   * rather than decoration — see db/migrations/005_rls.up.sql.
+   */
+  APP_DATABASE_URL: z.string().url(),
   DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(100).default(10),
   DATABASE_STATEMENT_TIMEOUT_MS: z.coerce.number().int().min(100).default(5000),
 

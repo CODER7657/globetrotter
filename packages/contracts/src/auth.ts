@@ -45,7 +45,8 @@ export type ResetPasswordBody = z.infer<typeof ResetPasswordBodySchema>;
 export const VerifyEmailBodySchema = z.object({ token: z.string().min(1) });
 export type VerifyEmailBody = z.infer<typeof VerifyEmailBodySchema>;
 
-export const UserRoleSchema = z.enum(["user", "admin"]);
+/** Matches the `user_role` enum in 001_foundation. */
+export const UserRoleSchema = z.enum(["traveler", "admin"]);
 export type UserRole = z.infer<typeof UserRoleSchema>;
 
 /** Safe projection of a user. Never carries a password hash. */

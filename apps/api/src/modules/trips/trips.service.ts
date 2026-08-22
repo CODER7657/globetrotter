@@ -17,12 +17,15 @@ function toTrip(row: TripRow): Trip {
   return {
     id: unsafeId<TripId>(row.id),
     ownerId: unsafeId<UserId>(row.owner_id),
-    title: row.title,
+    name: row.name,
     description: row.description,
     startDate: row.start_date,
     endDate: row.end_date,
-    coverImageUrl: row.cover_image_url,
+    status: row.status,
     visibility: row.visibility,
+    baseCurrency: row.base_currency,
+    budgetCap: row.budget_cap,
+    coverImageUrl: row.cover_image_url,
     version: row.version,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
@@ -46,10 +49,12 @@ export function createTripsService(withTx: WithTx): TripsService {
       const row = await withTx(userId, (trx) =>
         insertTrip(trx, {
           ownerId: userId,
-          title: body.title,
+          name: body.name,
           description: body.description ?? null,
           startDate: body.startDate,
           endDate: body.endDate,
+          baseCurrency: body.baseCurrency,
+          budgetCap: body.budgetCap ?? null,
           coverImageUrl: body.coverImageUrl ?? null,
         }),
       );

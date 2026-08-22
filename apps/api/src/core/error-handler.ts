@@ -60,6 +60,10 @@ function toProblem(error: AppError, traceId: string, instance: string): ProblemD
     problem.errors = error.fieldErrors;
   }
 
+  if (error.constraint !== undefined) {
+    problem.constraint = error.constraint;
+  }
+
   return problem;
 }
 

@@ -42,6 +42,20 @@ export const ErrorCodeSchema = z.enum([
   ErrorCode.INTERNAL,
 ]);
 
+/**
+ * The temporal integrity constraints from 004_trips. These are the rules that
+ * make an impossible itinerary unstorable, so their violations are the ones
+ * worth naming precisely to the client rather than flattening to "conflict".
+ */
+export const TemporalConstraintSchema = z.enum([
+  "trip_stops_no_overlap",
+  "trip_activities_no_double_book",
+  "trip_activities_within_stop",
+  "trips_owner_no_overlap",
+]);
+
+export type TemporalConstraint = z.infer<typeof TemporalConstraintSchema>;
+
 /** One field-level failure, shaped so a form library can bind it directly. */
 export const FieldErrorSchema = z.object({
   /** JSON Pointer-ish dotted path, e.g. `stops.0.arrivalDate`. */
@@ -65,6 +79,14 @@ export const ProblemDetailsSchema = z.object({
   code: ErrorCodeSchema,
   traceId: z.string(),
   errors: z.array(FieldErrorSchema).optional(),
+  /**
+   * The database constraint that rejected the write, when one did.
+   *
+   * The API cannot phrase the good sentence on its own — it does not know the
+   * city or trip name involved — so it names the rule and lets the UI say
+   * "You'd already be in Rome on those dates" (issue #41).
+   */
+  constraint: TemporalConstraintSchema.optional(),
 });
 
 export type ProblemDetails = z.infer<typeof ProblemDetailsSchema>;

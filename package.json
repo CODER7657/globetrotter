@@ -11,11 +11,11 @@
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
     "test": "pnpm -r test",
-    "db:up": "docker compose up -d db",
-    "db:migrate": "node scripts/migrate.mjs up",
-    "dev": "pnpm --filter @globetrotter/api dev",
-    "db:rollback": "node scripts/migrate.mjs down",
-    "db:status": "node scripts/migrate.mjs status"
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:migrate": "docker compose run --rm migrate",
+    "db:status": "docker compose exec -T postgres /db/scripts/migrate.sh status",
+    "dev": "pnpm --filter @globetrotter/api dev"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
@@ -23,7 +23,6 @@
     "eslint-plugin-boundaries": "^5.0.1",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.18.1",
-    "pg": "^8.13.1",
     "@eslint/js": "^9.17.0",
     "eslint-import-resolver-typescript": "^3.7.0"
   }

@@ -13,9 +13,10 @@ describe("trips API", () => {
   let stranger: SeededUser;
 
   const validTrip = {
-    title: "Iberian loop",
+    name: "Iberian loop",
     startDate: "2026-09-01",
     endDate: "2026-09-14",
+    baseCurrency: "EUR",
     description: "Lisbon, Seville, Granada",
   };
 
@@ -51,12 +52,16 @@ describe("trips API", () => {
 
       const body = response.json<{ data: Record<string, unknown> }>();
       expect(body.data).toMatchObject({
-        title: "Iberian loop",
+        name: "Iberian loop",
+        // Inclusive on the way in and on the way out, even though the database
+        // stores a half-open [) daterange.
         startDate: "2026-09-01",
         endDate: "2026-09-14",
         ownerId: owner.id,
+        status: "draft",
         visibility: "private",
-        version: 0,
+        baseCurrency: "EUR",
+        version: 1,
       });
       expect(response.headers["location"]).toBe(`/api/v1/trips/${String(body.data["id"])}`);
     });
@@ -105,7 +110,7 @@ describe("trips API", () => {
       });
 
       expect(response.statusCode).toBe(200);
-      expect(response.headers["etag"]).toBe('"0"');
+      expect(response.headers["etag"]).toBe('"1"');
       expect(response.json<{ data: { id: string } }>().data.id).toBe(tripId);
     });
 
@@ -139,8 +144,8 @@ describe("trips API", () => {
 
   describe("GET /trips", () => {
     it("paginates by cursor and never repeats a row across pages", async () => {
-      for (const title of ["one", "two", "three"]) {
-        const response = await createTrip(owner, { ...validTrip, title });
+      for (const name of ["one", "two", "three"]) {
+        const response = await createTrip(owner, { ...validTrip, name });
         expect(response.statusCode).toBe(201);
       }
 
