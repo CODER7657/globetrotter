@@ -25,6 +25,11 @@ export default tseslint.config(
         typescript: { project: ["apps/api/tsconfig.json", "packages/contracts/tsconfig.json"] },
       },
       "boundaries/include": ["**/apps/api/src/**/*.ts"],
+      // Tests and their harness are not part of the layered architecture: a
+      // test legitimately reaches across every layer to set a scenario up.
+      // Without this, a test placed inside a classified directory (core/,
+      // modules/) inherits that layer's import rules and fails on the harness.
+      "boundaries/ignore": ["**/*.test.ts", "**/src/test/**"],
       "boundaries/elements": [
         { type: "routes", pattern: "**/modules/*/*.routes.ts", mode: "file" },
         { type: "service", pattern: "**/modules/*/*.service.ts", mode: "file" },
