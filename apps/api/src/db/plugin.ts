@@ -29,10 +29,25 @@ export type WithTx = <T>(
   fn: (trx: Tx) => Promise<T>,
 ) => Promise<T>;
 
+/**
+ * Runs `fn` in a transaction identified by a *share slug* rather than a user.
+ *
+ * Unlisted trips are readable by anyone holding the link, and the schema
+ * expresses that by consulting `app.share_slug` — both `trip_shares_read` and
+ * the `unlisted` branch of `app.can_read_trip` read it. So a public request
+ * carries no user id at all: possession of the slug is the entire credential,
+ * and the database decides what that unlocks.
+ */
+export type WithShareTx = <T>(
+  shareSlug: string,
+  fn: (trx: Tx) => Promise<T>,
+) => Promise<T>;
+
 declare module "fastify" {
   interface FastifyInstance {
     db: Db;
     withTx: WithTx;
+    withShareTx: WithShareTx;
   }
 }
 
@@ -60,8 +75,18 @@ async function databasePlugin(app: FastifyInstance, config: Config): Promise<voi
       return fn(trx);
     });
 
+  const withShareTx: WithShareTx = (shareSlug, fn) =>
+    db.transaction().execute(async (trx) => {
+      // app.user_id stays empty: a link holder is not a logged-in user, and
+      // leaving a stale identity here would widen what the slug unlocks.
+      await sql`select set_config('app.user_id', '', true)`.execute(trx);
+      await sql`select set_config('app.share_slug', ${shareSlug}, true)`.execute(trx);
+      return fn(trx);
+    });
+
   app.decorate("db", db);
   app.decorate("withTx", withTx);
+  app.decorate("withShareTx", withShareTx);
 
   app.addHook("onClose", async () => {
     await db.destroy();
