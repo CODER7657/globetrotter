@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "pnpm --filter @globetrotter/design-system build",
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json"
