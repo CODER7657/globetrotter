@@ -54,3 +54,35 @@
     animation: gt-rise var(--gt-duration-base) var(--gt-easing-out) backwards;
   }
 }
+
+/*
+ * Travellers print itineraries. Drop the chrome, force light ink on white
+ * regardless of the on-screen theme, and stop sticky headers repeating on
+ * every page — position: sticky inside a printed flow reprints the header.
+ */
+@media print {
+  nav,
+  aside,
+  header button,
+  .gt-no-print {
+    display: none !important;
+  }
+
+  .gt-print-flat :is(h3, .sticky) {
+    position: static !important;
+    backdrop-filter: none !important;
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  a[href^='#'] {
+    text-decoration: none;
+  }
+
+  li {
+    break-inside: avoid;
+  }
+}

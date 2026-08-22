@@ -19,6 +19,7 @@ import type { TripStop } from '@globetrotter/contracts'
 import { createFileRoute } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
 import { Button, ErrorState, Skeleton, SkeletonText } from '../../components/primitives.js'
+import { ItineraryView } from '../../components/itinerary-view.js'
 import { useToast } from '../../components/toast.js'
 import { useAuth } from '../../lib/auth.js'
 import { conflictMessage } from '../../lib/constraints.js'
@@ -110,6 +111,7 @@ function Builder() {
   const { nameFor, remember } = useCityNames()
 
   const [savedAt, setSavedAt] = useState<string | null>(null)
+  const [pane, setPane] = useState<'build' | 'view'>('build')
 
   const stops = useMemo(
     () => [...(stopsQuery.data?.data ?? [])].sort((a, b) => a.seq - b.seq),
@@ -186,9 +188,36 @@ function Builder() {
         <StopPicker tripId={tripId} onCityKnown={remember} />
 
         <section aria-label="Itinerary" className="min-w-0">
-          {stopsQuery.isPending && <SkeletonText lines={5} />}
+          <div
+            role="radiogroup"
+            aria-label="Editing mode"
+            className="mb-4 flex w-fit gap-1 rounded-[var(--radius-md)] bg-muted p-1 gt-no-print"
+          >
+            {(['build', 'view'] as const).map((option) => (
+              <button
+                key={option}
+                role="radio"
+                aria-checked={pane === option}
+                onClick={() => {
+                  setPane(option)
+                }}
+                className={`rounded-[var(--radius-sm)] px-3 py-1 text-xs capitalize transition-colors ${
+                  pane === option
+                    ? 'bg-card text-foreground shadow-[var(--gt-shadow-xs)]'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                style={{ transitionDuration: 'var(--gt-duration-fast)' }}
+              >
+                {option === 'build' ? 'Build' : 'Timeline'}
+              </button>
+            ))}
+          </div>
 
-          {!stopsQuery.isPending && stops.length === 0 && (
+          {pane === 'view' && <ItineraryView stops={stops} nameFor={nameFor} />}
+
+          {pane === 'build' && stopsQuery.isPending && <SkeletonText lines={5} />}
+
+          {pane === 'build' && !stopsQuery.isPending && stops.length === 0 && (
             <div className="rounded-[var(--radius-lg)] border border-dashed border-border p-10 text-center">
               <p className="font-medium text-foreground">No stops yet</p>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -197,7 +226,7 @@ function Builder() {
             </div>
           )}
 
-          {stops.length > 0 && (
+          {pane === 'build' && stops.length > 0 && (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
               <SortableContext
                 items={stops.map((stop) => stop.id)}

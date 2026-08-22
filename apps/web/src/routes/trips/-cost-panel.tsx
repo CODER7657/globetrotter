@@ -122,7 +122,18 @@ export function CostPanel({ tripId }: { readonly tripId: string }) {
           <div className="h-40">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={categories} dataKey="amount" nameKey="name" innerRadius={38} outerRadius={62}>
+                <Pie
+                  data={categories}
+                  dataKey="amount"
+                  nameKey="name"
+                  innerRadius={38}
+                  outerRadius={62}
+                  /* 2px surface gap between fills: separates adjacent slices
+                     without relying on hue, which is what the CVD floor asks for. */
+                  paddingAngle={2}
+                  stroke="var(--card)"
+                  strokeWidth={2}
+                >
                   {categories.map((entry, index) => (
                     <Cell key={entry.name} fill={colorAt(index)} />
                   ))}
@@ -138,9 +149,15 @@ export function CostPanel({ tripId }: { readonly tripId: string }) {
           <table className="mt-3 w-full text-xs">
             <caption className="sr-only">Cost by category</caption>
             <tbody>
-              {categories.map((entry) => (
+              {categories.map((entry, index) => (
                 <tr key={entry.name}>
                   <th scope="row" className="py-0.5 text-left font-normal capitalize text-muted-foreground">
+                    {/* Swatch + name: identity is never carried by colour alone. */}
+                    <span
+                      aria-hidden="true"
+                      className="mr-1.5 inline-block h-2 w-2 rounded-[2px] align-middle"
+                      style={{ background: colorAt(index) }}
+                    />
                     {entry.name}
                   </th>
                   <td className="py-0.5 text-right tabular-nums text-card-foreground">
