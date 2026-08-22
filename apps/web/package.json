@@ -12,13 +12,22 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@fontsource-variable/geist": "^5.1.0",
+    "@fontsource-variable/jetbrains-mono": "^5.1.1",
+    "@fontsource/instrument-serif": "^5.1.0",
     "@globetrotter/contracts": "workspace:*",
     "@globetrotter/design-system": "workspace:*",
+    "@gsap/react": "^2.1.1",
     "@tanstack/react-query": "^5.101.4",
     "@tanstack/react-router": "^1.170.31",
+    "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "cobe": "^0.6.3",
+    "gsap": "^3.13.0",
+    "lucide-react": "^0.468.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "tailwind-merge": "^2.5.5"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
