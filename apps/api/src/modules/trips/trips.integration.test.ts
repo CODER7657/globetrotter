@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { asUser, buildTestApp, closeHarness, seedUser, truncateAll } from "../../test/harness.js";
+import { asUser, buildTestApp, closeHarness, registerUser, truncateAll } from "../../test/harness.js";
 import type { FastifyInstance } from "fastify";
-import type { SeededUser } from "../../test/harness.js";
+import type { TestSession } from "../../test/harness.js";
 
 /**
  * The proof that issue #13 is done: one request travelling routes -> service
@@ -9,8 +9,8 @@ import type { SeededUser } from "../../test/harness.js";
  */
 describe("trips API", () => {
   let app: FastifyInstance;
-  let owner: SeededUser;
-  let stranger: SeededUser;
+  let owner: TestSession;
+  let stranger: TestSession;
 
   const validTrip = {
     name: "Iberian loop",
@@ -32,15 +32,15 @@ describe("trips API", () => {
 
   beforeEach(async () => {
     await truncateAll();
-    owner = await seedUser();
-    stranger = await seedUser();
+    owner = await registerUser(app);
+    stranger = await registerUser(app);
   });
 
-  const createTrip = (user: SeededUser, body: Record<string, unknown> = validTrip) =>
+  const createTrip = (user: TestSession, body: Record<string, unknown> = validTrip) =>
     app.inject({
       method: "POST",
       url: "/api/v1/trips",
-      headers: asUser(user.id),
+      headers: asUser(user.accessToken),
       payload: body,
     });
 
@@ -106,7 +106,7 @@ describe("trips API", () => {
       const response = await app.inject({
         method: "GET",
         url: `/api/v1/trips/${tripId}`,
-        headers: asUser(owner.id),
+        headers: asUser(owner.accessToken),
       });
 
       expect(response.statusCode).toBe(200);
@@ -121,7 +121,7 @@ describe("trips API", () => {
       const response = await app.inject({
         method: "GET",
         url: `/api/v1/trips/${tripId}`,
-        headers: asUser(stranger.id),
+        headers: asUser(stranger.accessToken),
       });
 
       // RLS filtered the row out entirely — the service never saw it, so the
@@ -134,7 +134,7 @@ describe("trips API", () => {
       const response = await app.inject({
         method: "GET",
         url: "/api/v1/trips/not-a-uuid",
-        headers: asUser(owner.id),
+        headers: asUser(owner.accessToken),
       });
 
       expect(response.statusCode).toBe(422);
@@ -152,7 +152,7 @@ describe("trips API", () => {
       const first = await app.inject({
         method: "GET",
         url: "/api/v1/trips?limit=2",
-        headers: asUser(owner.id),
+        headers: asUser(owner.accessToken),
       });
 
       expect(first.statusCode).toBe(200);
@@ -167,7 +167,7 @@ describe("trips API", () => {
       const second = await app.inject({
         method: "GET",
         url: `/api/v1/trips?limit=2&cursor=${String(firstPage.page.nextCursor)}`,
-        headers: asUser(owner.id),
+        headers: asUser(owner.accessToken),
       });
 
       const secondPage = second.json<{
@@ -187,7 +187,7 @@ describe("trips API", () => {
       const response = await app.inject({
         method: "GET",
         url: "/api/v1/trips",
-        headers: asUser(stranger.id),
+        headers: asUser(stranger.accessToken),
       });
 
       expect(response.statusCode).toBe(200);
