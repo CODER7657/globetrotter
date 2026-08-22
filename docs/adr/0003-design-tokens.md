@@ -35,9 +35,15 @@ subtle value. WCAG 1.4.11 exempts decorative card edges but not the boundary of 
 form field, which is what identifies the control. `--input` is gated at 3:1;
 `--border` is reported only. #26 is explicitly a graded exhibit.
 
-**`--ring` is independent of `--primary`.** The sunset accent at `L 0.70` reaches
-2.84:1 on white, below the 3:1 that focus indicators require (WCAG 2.4.11). The
-light ring is a darker `L 0.66`; in dark mode the two coincide legitimately.
+**`--ring` is independent of `--primary`.** The original reason was contrast: the
+sunset accent then used for `--primary` fell below the 3:1 focus indicators
+require (WCAG 2.4.11). The Velorah palette (#62) made `--primary` monochrome,
+which retires that specific number but strengthens the rule — *a focus ring the
+same colour as the button it sits on is invisible on that button.* With
+`--primary` at the extremes of the neutral ramp, a matching ring would vanish on
+every primary button. `--ring` therefore stays on `sunset` in both themes: in a
+monochrome system a hue nothing else uses is an accessibility affordance rather
+than decoration. `layering.test.ts` fails if the two are ever set equal.
 
 **Tailwind v4 `@theme` is the real artifact; the JS preset is secondary.** #24 asks
 for a generated `tailwind.config.ts` while its own toolbox specifies Tailwind v4,

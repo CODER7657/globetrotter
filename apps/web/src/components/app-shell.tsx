@@ -11,7 +11,7 @@ export interface NavItem {
 
 /** Single source for both the sidebar and the mobile tab bar. */
 export const NAV: readonly NavItem[] = [
-  { to: '/dashboard', label: 'Dashboard', glyph: '◈' },
+  { to: '/', label: 'Dashboard', glyph: '◈' },
   { to: '/trips', label: 'Trips', glyph: '✈' },
   { to: '/search', label: 'Search', glyph: '⌕' },
   { to: '/settings', label: 'Settings', glyph: '⚙' },
@@ -20,11 +20,11 @@ export const NAV: readonly NavItem[] = [
 /**
  * Routes that render without app chrome.
  *
- * The landing page (#33) is marketing shown to logged-out visitors — a
- * sidebar and a bottom tab bar on it would be nonsense, and it carries its own
- * nav and footer. Everything else gets the shell.
+ * The landing is marketing shown to logged-out visitors — a sidebar and a
+ * bottom tab bar on it would be nonsense, and it carries its own nav and
+ * footer. Everything else gets the shell.
  */
-const CHROMELESS: readonly string[] = ['/']
+const CHROMELESS: readonly string[] = ['/welcome']
 
 export function AppShell({ children }: { readonly children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname })

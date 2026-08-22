@@ -92,8 +92,9 @@ A token that fails fails the build, so `pnpm test` and CI inherit the gate.
 Two decisions that look like inconsistencies and are not, both recorded in
 [ADR 0003](docs/adr/0003-design-tokens.md):
 
-- **`--ring` is not `--primary` in light mode.** The sunset accent at `L 0.70`
-  reaches only 2.84:1 on white, below the 3:1 focus indicators require.
+- **`--ring` is never `--primary`.** A focus ring the same colour as the button
+  it sits on is invisible on that button, and since #62 `--primary` is
+  monochrome. The ring stays on `sunset` so focus is unmistakable.
 - **`--border` and `--input` differ.** WCAG 1.4.11 exempts a decorative card edge
   but not a form field boundary, which is what identifies the control.
 

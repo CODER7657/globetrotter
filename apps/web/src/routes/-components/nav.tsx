@@ -175,7 +175,7 @@ export function Nav(): React.JSX.Element {
             )}
           >
             <Link
-              to="/"
+              to="/welcome"
               onClick={closeMenu}
               className="shrink-0 font-display text-xl tracking-tight sm:text-2xl"
             >
