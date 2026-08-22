@@ -1,0 +1,13 @@
+DROP TABLE IF EXISTS countries;
+DROP TABLE IF EXISTS fx_rates;
+DROP TABLE IF EXISTS currencies;
+DROP FUNCTION IF EXISTS app.immutable_unaccent(text);
+DROP FUNCTION IF EXISTS app.touch_updated_at();
+DROP FUNCTION IF EXISTS app.current_user_id();
+DROP TYPE IF EXISTS transport_mode;
+DROP TYPE IF EXISTS cost_category;
+DROP TYPE IF EXISTS collaborator_role;
+DROP TYPE IF EXISTS trip_visibility;
+DROP TYPE IF EXISTS trip_status;
+DROP TYPE IF EXISTS user_role;
+DROP SCHEMA IF EXISTS app CASCADE;

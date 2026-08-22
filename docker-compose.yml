@@ -1,0 +1,89 @@
+# GlobeTrotter — local stack.
+# Everything runs on this machine. No cloud database, no BaaS, no third-party API.
+#
+#   docker compose up -d          start
+#   docker compose --profile tools up -d   also start adminer
+#
+# Postgres 18 is required: the itinerary schema uses temporal PRIMARY KEY /
+# FOREIGN KEY (PERIOD ... WITHOUT OVERLAPS), which does not exist before 18.
+
+name: globetrotter
+
+services:
+  postgres:
+    # pgvector image rather than stock postgres: the vector column ships in the
+    # schema now so enabling semantic search later is a data job, not a migration.
+    image: pgvector/pgvector:pg18
+    container_name: gt-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-globetrotter}
+      # Deterministic collation so ORDER BY is identical on every teammate's machine.
+      POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=en-US --encoding=UTF8"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # Postgres 18 images moved the data dir: the mount belongs at
+      # /var/lib/postgresql, NOT /var/lib/postgresql/data. Mounting the old path
+      # makes the container start and then fail its healthcheck with a wall of
+      # pg_upgrade advice. See docker-library/postgres#1259.
+      - pgdata:/var/lib/postgresql
+      - ./db:/db:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-globetrotter}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    command:
+      - postgres
+      # Surface slow queries in the log — we cite p95 numbers in the pitch.
+      - -c
+      - log_min_duration_statement=200
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - max_connections=100
+
+  # One-shot: applies every pending migration, then seeds. Exits 0 when done.
+  migrate:
+    image: pgvector/pgvector:pg18
+    container_name: gt-migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-globetrotter}
+    volumes:
+      - ./db:/db
+    working_dir: /db/scripts
+    entrypoint: ["bash", "-lc", "./migrate.sh up && ./migrate.sh seed"]
+    restart: "no"
+
+  mailhog:
+    # Local SMTP sink. Password-reset and verification mail is visible at
+    # http://localhost:8025 with no internet connection and no mail provider.
+    image: axllent/mailpit:latest
+    container_name: gt-mail
+    restart: unless-stopped
+    ports:
+      - "${MAIL_UI_PORT:-8025}:8025"
+      - "${MAIL_SMTP_PORT:-1025}:1025"
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
+  adminer:
+    image: adminer:latest
+    container_name: gt-adminer
+    profiles: ["tools"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${ADMINER_PORT:-8080}:8080"
+
+volumes:
+  pgdata:
