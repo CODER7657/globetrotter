@@ -3,18 +3,19 @@ import { randomBytes } from "node:crypto";
 /**
  * UUIDv7 generated in the application.
  *
- * WHY THIS EXISTS — it is a workaround, not a preference. The schema defaults
- * every id to `uuidv7()` and that is where ids should come from. But
- * `INSERT ... RETURNING` on `trips` is rejected under the current RLS policies:
- * RETURNING is subject to the SELECT policy, `trips_read` is
- * `USING app.can_read_trip(id)`, and that function is STABLE, so it evaluates
- * against the statement's snapshot and cannot see the row being inserted.
+ * WHY THIS EXISTS. `INSERT ... RETURNING` cannot work on RLS-protected tables
+ * whose SELECT policy is a STABLE function: RETURNING is subject to that
+ * policy, and the function evaluates against the statement's snapshot, so it
+ * cannot see the row being inserted. `trips_read` is
+ * `USING app.can_read_trip(id)`, so the insert is rejected outright.
  *
- * So the API supplies the id, inserts without RETURNING, and reads the row
- * back in a second statement (which does get a fresh snapshot).
+ * The API therefore supplies the id, inserts without RETURNING, and reads the
+ * row back in a second statement, which does get a fresh snapshot.
  *
- * Once `trips_read` gains a direct `owner_id = app.current_user_id()` disjunct
- * this file should be deleted and the DEFAULT used again. See the PR thread.
+ * This is the sanctioned approach, not a stopgap — 008_auth_support settles it
+ * explicitly: adding a SECURITY DEFINER function to avoid one line of
+ * application code would be the worse trade. Do not delete this expecting the
+ * column DEFAULT to take over.
  *
  * Layout per RFC 9562 §5.7:
  *   48 bits  unix_ts_ms   (big-endian)
