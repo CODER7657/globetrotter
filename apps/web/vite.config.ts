@@ -10,5 +10,16 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
-  server: { port: 5173 },
+  server: {
+    port: 5173,
+    // Same-origin in development, so the refresh cookie is first-party and the
+    // browser actually stores it. A cross-origin call to :3000 would have it
+    // dropped as third-party under default cookie policy.
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:3000',
+        changeOrigin: true,
+      },
+    },
+  },
 })
