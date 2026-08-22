@@ -8,11 +8,13 @@ import { serializerCompiler, validatorCompiler } from "fastify-type-provider-zod
 import databasePlugin from "./db/plugin.js";
 import identityPlugin from "./core/identity.js";
 import { registerErrorHandler } from "./core/error-handler.js";
-import { registerOpenApi } from "./core/openapi.js";
-import { API_PREFIX } from "./core/constants.js";
+import adminRoutes from "./modules/admin/admin.routes.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 import healthRoutes from "./modules/health/health.routes.js";
 import activitiesRoutes from "./modules/trips/activities.routes.js";
+import summaryRoutes from "./modules/trips/summary.routes.js";
+import { registerOpenApi } from "./core/openapi.js";
+import { API_PREFIX } from "./core/constants.js";
 import collaboratorsRoutes from "./modules/trips/collaborators.routes.js";
 import sharingRoutes from "./modules/sharing/sharing.routes.js";
 import costRoutes from "./modules/trips/cost.routes.js";
@@ -113,7 +115,9 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
   // One encapsulated plugin per module (issue #13).
   await app.register(healthRoutes);
   await app.register(authRoutes, { prefix: API_PREFIX, config });
+  await app.register(summaryRoutes, { prefix: API_PREFIX });
   await app.register(tripsRoutes, { prefix: API_PREFIX });
+  await app.register(adminRoutes, { prefix: API_PREFIX });
   await app.register(stopsRoutes, { prefix: API_PREFIX });
   await app.register(activitiesRoutes, { prefix: API_PREFIX });
   await app.register(collaboratorsRoutes, { prefix: API_PREFIX });

@@ -1,4 +1,5 @@
 import fp from "fastify-plugin";
+import { sql } from "kysely";
 import { createTokens } from "./tokens.js";
 import { UnauthenticatedError, ForbiddenError } from "./errors.js";
 import type { FastifyInstance, FastifyRequest, preHandlerAsyncHookHandler } from "fastify";
@@ -55,13 +56,34 @@ async function identityPlugin(app: FastifyInstance, config: Config): Promise<voi
 
   app.decorate("authenticate", authenticate);
 
-  // Role is carried in the access token, but this is only the outer gate.
-  // Admin data access is additionally constrained by RLS (issue #21), so a
-  // forged role claim still cannot read rows the policy forbids.
+  /**
+   * Admin gate, resolved against the DATABASE rather than the token.
+   *
+   * The access token carries a role, but it is a snapshot from login and
+   * lives for ten minutes. Trusting it means a demoted admin keeps admin
+   * access until their token expires, and a freshly promoted one is refused
+   * until they sign in again. Neither is acceptable for the one role that
+   * can read every account.
+   *
+   * `app.is_admin()` is the same predicate every RLS policy consults, so the
+   * gate and the row-level rules can never disagree. One cheap query buys
+   * that; a test demotes an admin and asserts their existing token stops
+   * working.
+   */
   app.decorate("requireAdmin", async function requireAdmin(request, reply) {
     await authenticate.call(this, request, reply);
 
-    if (request.authUser?.role !== "admin") {
+    const claims = request.authUser;
+    if (claims === undefined) {
+      throw new UnauthenticatedError("Authentication required");
+    }
+
+    const isAdmin = await app.withTx(claims.userId, async (trx) => {
+      const result = await sql<{ ok: boolean }>`select app.is_admin() as ok`.execute(trx);
+      return result.rows[0]?.ok ?? false;
+    });
+
+    if (!isAdmin) {
       throw new ForbiddenError("This endpoint requires an admin account");
     }
   } as preHandlerAsyncHookHandler);
