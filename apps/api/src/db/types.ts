@@ -83,6 +83,24 @@ export interface CitiesTable {
   updated_at: Managed;
 }
 
+/** Catalogue reference data. Read-only to the API role (005_rls). */
+export interface ActivitiesTable {
+  id: Generated<string>;
+  city_id: string;
+  category_id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  duration_minutes: number;
+  cost_amount: string;
+  currency_code: string;
+  rating: string | null;
+  image_url: string | null;
+  booking_required: Generated<boolean>;
+  created_at: Managed;
+  updated_at: Managed;
+}
+
 export interface TripsTable {
   id: Generated<string>;
   owner_id: string;
@@ -167,6 +185,7 @@ export interface Database {
   refresh_token_families: RefreshTokenFamiliesTable;
   refresh_tokens: RefreshTokensTable;
   cities: CitiesTable;
+  activities: ActivitiesTable;
   trips: TripsTable;
   trip_stops: TripStopsTable;
   trip_activities: TripActivitiesTable;
