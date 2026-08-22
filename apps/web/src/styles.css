@@ -9,6 +9,16 @@
  */
 @import '@globetrotter/design-system/theme.css';
 
+/*
+ * The faces named by primitive.font in tokens.json. Self-hosted rather than
+ * pulled from a CDN so the offline PWA (#31) never waits on a font request.
+ * Without these the design system's font tokens fall back to Georgia/system.
+ */
+@import '@fontsource/instrument-serif/400.css';
+@import '@fontsource/instrument-serif/400-italic.css';
+@import '@fontsource-variable/geist/index.css';
+@import '@fontsource-variable/jetbrains-mono/index.css';
+
 /* Dark mode is a class on <html>, set before first paint in index.html. */
 @custom-variant dark (&:where(.dark, .dark *));
 
