@@ -71,21 +71,21 @@ jobs:
           fi
 
       - name: Migrate up
-        run: ./db/scripts/migrate.sh up
+        run: bash ./db/scripts/migrate.sh up
 
       - name: Seed
-        run: ./db/scripts/migrate.sh seed
+        run: bash ./db/scripts/migrate.sh seed
 
       - name: SQL test suite
         # 79 assertions. Exits non-zero if any fails — verified deliberately.
-        run: ./db/scripts/test.sh
+        run: bash ./db/scripts/test.sh
 
       - name: Every migration reverses cleanly
         # A down migration nobody runs is a down migration that does not work.
         # This asserts the schema returns to EMPTY, not merely that down exited 0.
         run: |
           COUNT=$(ls db/migrations/*.up.sql | wc -l)
-          for _ in $(seq 1 "$COUNT"); do ./db/scripts/migrate.sh down; done
+          for _ in $(seq 1 "$COUNT"); do bash ./db/scripts/migrate.sh down; done
           LEFT=$(psql "$DATABASE_URL" -tAc "
             SELECT count(*) FROM (
               SELECT tablename t FROM pg_tables
@@ -103,12 +103,12 @@ jobs:
           fi
 
       - name: Re-apply from zero
-        run: ./db/scripts/migrate.sh up && ./db/scripts/migrate.sh seed
+        run: bash ./db/scripts/migrate.sh up && bash ./db/scripts/migrate.sh seed
 
       - name: Performance snapshot
         # Not a gate — a number in the log. The pitch quotes it, so it should
         # never be a surprise on the day.
-        run: ./db/scripts/perf.sh || true
+        run: bash ./db/scripts/perf.sh || true
 
   # ───────────────────────────────────────────────────────────────────────────
   build:
@@ -162,7 +162,7 @@ jobs:
           sudo apt-get install -y -qq postgresql-client-18
 
       - name: Prepare database
-        run: ./db/scripts/migrate.sh up && ./db/scripts/migrate.sh seed
+        run: bash ./db/scripts/migrate.sh up && bash ./db/scripts/migrate.sh seed
 
       - name: Lint
         run: pnpm lint

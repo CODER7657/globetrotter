@@ -59,7 +59,10 @@ services:
     volumes:
       - ./db:/db
     working_dir: /db/scripts
-    entrypoint: ["bash", "-lc", "./migrate.sh up && ./migrate.sh seed"]
+    # Invoked through bash explicitly. Relying on the executable bit means a
+    # clone made on Windows (where Git does not record file modes) produces a
+    # stack that cannot start -- which is exactly what happened.
+    entrypoint: ["bash", "-lc", "bash ./migrate.sh up && bash ./migrate.sh seed"]
     restart: "no"
 
   mailhog:
