@@ -1,51 +1,80 @@
 import fp from "fastify-plugin";
-import { UserId } from "@globetrotter/contracts";
-import { UnauthenticatedError } from "./errors.js";
-import type { FastifyInstance, FastifyRequest } from "fastify";
+import { createTokens } from "./tokens.js";
+import { UnauthenticatedError, ForbiddenError } from "./errors.js";
+import type { FastifyInstance, FastifyRequest, preHandlerAsyncHookHandler } from "fastify";
+import type { UserId } from "@globetrotter/contracts";
 import type { Config } from "../config.js";
+import type { AccessTokenClaims, Tokens } from "./tokens.js";
 
 /**
- * TEMPORARY identity seam for the skeleton (issue #13).
+ * Authentication (issue #15).
  *
- * Issue #15 replaces the body of `requireUserId` with real access-token
- * verification. Everything else in the codebase already depends only on this
- * signature, so that change touches exactly one file.
- *
- * Until then the caller is read from an `x-user-id` header. That is obviously
- * not authentication, so it is FAIL-CLOSED: in production this always throws,
- * which makes it impossible to ship the bypass by accident.
+ * `authenticate` is a preHandler that verifies the bearer access token and
+ * attaches the claims to the request. `requireUserId` then reads what that
+ * hook proved — it never authenticates anything itself, so forgetting the
+ * preHandler fails closed with a 401 rather than silently trusting input.
  */
 
 declare module "fastify" {
   interface FastifyInstance {
+    tokens: Tokens;
+    authenticate: preHandlerAsyncHookHandler;
+    requireAdmin: preHandlerAsyncHookHandler;
     requireUserId: (request: FastifyRequest) => UserId;
+  }
+
+  interface FastifyRequest {
+    authUser?: AccessTokenClaims;
   }
 }
 
+function bearerToken(request: FastifyRequest): string | undefined {
+  const header = request.headers.authorization;
+  if (header === undefined) return undefined;
+
+  const [scheme, value] = header.split(" ");
+  if (scheme?.toLowerCase() !== "bearer" || value === undefined || value.length === 0) {
+    return undefined;
+  }
+
+  return value;
+}
+
 async function identityPlugin(app: FastifyInstance, config: Config): Promise<void> {
-  const devIdentityAllowed = config.NODE_ENV !== "production";
+  const tokens = createTokens(config);
+  app.decorate("tokens", tokens);
+
+  const authenticate: preHandlerAsyncHookHandler = async (request) => {
+    const token = bearerToken(request);
+    if (token === undefined) {
+      throw new UnauthenticatedError("Missing bearer access token");
+    }
+
+    request.authUser = await tokens.verify(token);
+  };
+
+  app.decorate("authenticate", authenticate);
+
+  // Role is carried in the access token, but this is only the outer gate.
+  // Admin data access is additionally constrained by RLS (issue #21), so a
+  // forged role claim still cannot read rows the policy forbids.
+  app.decorate("requireAdmin", async function requireAdmin(request, reply) {
+    await authenticate.call(this, request, reply);
+
+    if (request.authUser?.role !== "admin") {
+      throw new ForbiddenError("This endpoint requires an admin account");
+    }
+  } as preHandlerAsyncHookHandler);
 
   app.decorate("requireUserId", (request: FastifyRequest): UserId => {
-    if (!devIdentityAllowed) {
-      throw new UnauthenticatedError(
-        "Authentication is not yet implemented — see issue #15",
-      );
+    const claims = request.authUser;
+    if (claims === undefined) {
+      // Reached only if a route forgot `preHandler: app.authenticate`.
+      throw new UnauthenticatedError("Authentication required");
     }
 
-    const header = request.headers["x-user-id"];
-    const raw = Array.isArray(header) ? header[0] : header;
-
-    const parsed = UserId.safeParse(raw);
-    if (!parsed.success) {
-      throw new UnauthenticatedError("Missing or malformed x-user-id header");
-    }
-
-    return parsed.data;
+    return claims.userId;
   });
-
-  if (devIdentityAllowed) {
-    app.log.warn("dev identity header (x-user-id) is ENABLED — never run this in production");
-  }
 }
 
 export default fp(identityPlugin, { name: "identity" });

@@ -8,6 +8,7 @@ import { serializerCompiler, validatorCompiler } from "fastify-type-provider-zod
 import databasePlugin from "./db/plugin.js";
 import identityPlugin from "./core/identity.js";
 import { registerErrorHandler } from "./core/error-handler.js";
+import authRoutes from "./modules/auth/auth.routes.js";
 import healthRoutes from "./modules/health/health.routes.js";
 import tripsRoutes from "./modules/trips/trips.routes.js";
 import { isProduction } from "./config.js";
@@ -95,6 +96,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
 
   // One encapsulated plugin per module (issue #13).
   await app.register(healthRoutes);
+  await app.register(authRoutes, { prefix: API_PREFIX, config });
   await app.register(tripsRoutes, { prefix: API_PREFIX });
 
   return app;

@@ -32,7 +32,11 @@ export default tseslint.config(
         { type: "schema", pattern: "**/modules/*/*.schema.ts", mode: "file" },
         { type: "core", pattern: "**/src/core/*.ts", mode: "file" },
         { type: "db", pattern: "**/src/db/*.ts", mode: "file" },
-        { type: "composition", pattern: "**/src/{app,server,config}.ts", mode: "file" },
+        // config is its own element, not part of the composition root: any
+        // layer may legitimately read typed configuration, but nothing may
+        // reach back into app.ts or server.ts.
+        { type: "config", pattern: "**/src/config.ts", mode: "file" },
+        { type: "composition", pattern: "**/src/{app,server}.ts", mode: "file" },
       ],
     },
     rules: {
@@ -43,18 +47,22 @@ export default tseslint.config(
           message: "${file.type} must not import ${dependency.type} — see issue #13",
           rules: [
             // HTTP layer: talks to services and shared schemas only.
-            { from: "routes", allow: ["service", "schema", "core", "db"] },
+            { from: "routes", allow: ["service", "schema", "core", "db", "config"] },
             // Business layer: talks to repositories. Never to Fastify.
-            { from: "service", allow: ["repository", "schema", "core", "db"] },
+            { from: "service", allow: ["repository", "schema", "core", "db", "config"] },
             // SQL layer: knows the database and nothing above it.
-            { from: "repository", allow: ["db"] },
+            { from: "repository", allow: ["db", "config"] },
             { from: "schema", allow: [] },
-            { from: "core", allow: ["core", "db", "composition"] },
-            { from: "db", allow: ["db", "composition"] },
+            { from: "config", allow: [] },
+            { from: "core", allow: ["core", "db", "config"] },
+            { from: "db", allow: ["db", "config"] },
             // The composition root is allowed to see everything — that is its job.
             {
               from: "composition",
-              allow: ["routes", "service", "repository", "schema", "core", "db", "composition"],
+              allow: [
+                "routes", "service", "repository", "schema",
+                "core", "db", "config", "composition",
+              ],
             },
           ],
         },
