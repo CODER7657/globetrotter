@@ -25,14 +25,24 @@ describe('renderThemeCss', () => {
   it('defines the dark theme on .dark', () => {
     expect(css).toMatch(/\.dark\s*\{/)
 
-    const darkBlock = css.slice(css.indexOf('.dark'))
-    const background = /--background:\s*(oklch\([^)]+\));/.exec(darkBlock)
+    // Asserted by shape rather than by one palette value: pinning the literal
+    // makes every palette swap a test edit. What matters is that the dark theme
+    // resolves --background to a real colour that differs from the light one —
+    // so read light's value out of :root rather than hardcoding it, or the
+    // comparison silently stops meaning anything the moment light changes.
+    const darkStart = css.indexOf('.dark')
+    const lightBlock = css.slice(css.indexOf(':root'), darkStart)
+    const darkBlock = css.slice(darkStart)
 
-    // Asserted by shape rather than by one palette value. What matters is that
-    // the dark theme resolves --background to a real colour that differs from
-    // the light one; pinning the literal makes every palette swap a test edit.
-    expect(background).not.toBeNull()
-    expect(background?.[1]).not.toBe('oklch(1 0 0)')
+    const read = (block: string): string | undefined =>
+      /--background:\s*(oklch\([^)]+\));/.exec(block)?.[1]
+
+    const light = read(lightBlock)
+    const dark = read(darkBlock)
+
+    expect(light).toBeDefined()
+    expect(dark).toBeDefined()
+    expect(dark).not.toBe(light)
   })
 
   it('exposes primitives under the --gt- prefix', () => {

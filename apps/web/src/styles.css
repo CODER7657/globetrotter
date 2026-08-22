@@ -1,6 +1,20 @@
 @import 'tailwindcss';
 
 /*
+ * Velorah's typography, self-hosted rather than CDN-linked.
+ *
+ * tokens.json names these families, but naming a family does not load it — the
+ * stack silently fell through to Georgia and system-ui, so the display face was
+ * never actually rendering. Self-hosting also satisfies #31: an offline-first
+ * app cannot fetch fonts from a CDN on a plane.
+ *
+ * Geist and JetBrains Mono are variable; Instrument Serif ships a single weight.
+ */
+@import '@fontsource-variable/geist';
+@import '@fontsource/instrument-serif';
+@import '@fontsource-variable/jetbrains-mono';
+
+/*
  * The design system owns every colour, space, radius, shadow and duration.
  * theme.css is generated from packages/design-system/tokens.json — it carries
  * the @theme inline mapping Tailwind v4 needs, plus the :root and .dark layers.
