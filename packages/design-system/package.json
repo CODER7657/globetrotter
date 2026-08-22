@@ -15,7 +15,7 @@
   },
   "files": ["dist", "tokens.json"],
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc -b && node dist/build.js",
     "typecheck": "tsc -b && tsc -p tsconfig.test.json",
     "test": "vitest run"
   },
