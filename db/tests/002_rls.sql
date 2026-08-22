@@ -8,6 +8,8 @@
 
 \set ON_ERROR_STOP on
 
+TRUNCATE test.results;   -- each suite reports only its own assertions
+
 -- ------------------------------------------------------------- fixtures ---
 -- Seeded as the migration role (superuser), before we drop to the app role.
 -- USD is required even though this suite uses EUR: users.home_currency defaults
@@ -17,7 +19,7 @@ INSERT INTO currencies(code,name,symbol) VALUES ('EUR','Euro','EUR'), ('USD','US
 INSERT INTO countries(code,name,region,currency_code) VALUES ('IT','Italy','Europe','EUR')
   ON CONFLICT (code) DO NOTHING;
 INSERT INTO cities(id,country_code,name,slug,latitude,longitude,timezone) VALUES
-  ('33333333-3333-7333-8333-333333333333','IT','Rome','rome',41.9028,12.4964,'Europe/Rome')
+  ('33333333-3333-7333-8333-333333333333','IT','zz Test City C','zz-test-city-c',41.9028,12.4964,'Europe/Rome')
   ON CONFLICT DO NOTHING;
 
 INSERT INTO users(id,email,password_hash,display_name) VALUES
