@@ -1,5 +1,6 @@
 import { ZodError } from "zod";
 import { ErrorCode } from "@globetrotter/contracts";
+import { VersionConflictError } from "./concurrency.js";
 import { ValidationError, toAppError } from "./errors.js";
 import type { FastifyError, FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { FieldError, ProblemDetails } from "@globetrotter/contracts";
@@ -62,6 +63,13 @@ function toProblem(error: AppError, traceId: string, instance: string): ProblemD
 
   if (error.constraint !== undefined) {
     problem.constraint = error.constraint;
+  }
+
+  // A bare "conflict" forces the client to re-fetch to discover what it lost.
+  // During a live collaboration that is another round trip in the middle of a
+  // race it has already lost, so the current version travels with the 409.
+  if (error instanceof VersionConflictError) {
+    problem.currentVersion = error.currentVersion;
   }
 
   return problem;

@@ -160,3 +160,72 @@ export async function listTripsByOwner(trx: Tx, input: ListTripsInput): Promise<
 
   return query.execute();
 }
+
+export interface UpdateTripFields {
+  name?: string;
+  description?: string | null;
+  period?: string;
+  status?: TripStatus;
+  visibility?: TripVisibility;
+  budgetCap?: string | null;
+  coverImageUrl?: string | null;
+}
+
+/**
+ * Applies a partial update. Returns undefined if the row is not visible to
+ * the caller, which RLS decides.
+ *
+ * The version is bumped HERE, in the same statement as the change.
+ *
+ * `notify_trip_change` bumps it for stops and activities but deliberately
+ * NOT for trips, to avoid re-firing itself (009_realtime). So a trip-level
+ * edit — a rename, a date change — would otherwise leave the version
+ * untouched, and two people renaming the same trip could not detect each
+ * other. If-Match would appear to work while guarding nothing.
+ *
+ * Doing it in the same UPDATE rather than a follow-up statement is what keeps
+ * the trigger's recursion concern from applying: there is one UPDATE, so one
+ * trigger invocation, and the NOTIFY it emits already carries the new version.
+ */
+export async function updateTrip(
+  trx: Tx,
+  tripId: string,
+  fields: UpdateTripFields,
+): Promise<TripRow | undefined> {
+  const values: Record<string, unknown> = {};
+  if (fields.name !== undefined) values["name"] = fields.name;
+  if (fields.description !== undefined) values["description"] = fields.description;
+  if (fields.period !== undefined) values["period"] = fields.period;
+  if (fields.status !== undefined) values["status"] = fields.status;
+  if (fields.visibility !== undefined) values["visibility"] = fields.visibility;
+  if (fields.budgetCap !== undefined) values["budget_cap"] = fields.budgetCap;
+  if (fields.coverImageUrl !== undefined) values["cover_image_url"] = fields.coverImageUrl;
+
+  if (Object.keys(values).length > 0) {
+    await trx
+      .updateTable("trips")
+      .set({ ...values, version: sql<number>`version + 1` })
+      .where("id", "=", tripId)
+      .where("deleted_at", "is", null)
+      .execute();
+  }
+
+  return findTripById(trx, tripId);
+}
+
+/**
+ * Soft-deletes a trip.
+ *
+ * Never a hard DELETE: trips are referenced by trip_events, whose whole point
+ * is to survive the thing it describes, and by trip_shares kept for audit.
+ */
+export async function softDeleteTrip(trx: Tx, tripId: string): Promise<number> {
+  const result = await trx
+    .updateTable("trips")
+    .set({ deleted_at: new Date() })
+    .where("id", "=", tripId)
+    .where("deleted_at", "is", null)
+    .executeTakeFirst();
+
+  return Number(result.numUpdatedRows);
+}

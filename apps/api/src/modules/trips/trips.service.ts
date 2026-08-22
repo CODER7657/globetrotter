@@ -1,9 +1,18 @@
 import { unsafeId } from "@globetrotter/contracts";
-import { NotFoundError } from "../../core/errors.js";
-import { findTripById, insertTrip, listTripsByOwner } from "./trips.repository.js";
+import { NotFoundError, ValidationError } from "../../core/errors.js";
+import { assertVersion } from "../../core/concurrency.js";
+import {
+  findTripById,
+  insertTrip,
+  listTripsByOwner,
+  softDeleteTrip,
+  toDaterange,
+  updateTrip,
+} from "./trips.repository.js";
 import type { Paginated, Trip, TripId, UserId } from "@globetrotter/contracts";
 import type { WithTx } from "../../db/plugin.js";
-import type { CreateTripBody, CursorQuery } from "./trips.schema.js";
+import type { CreateTripBody, CursorQuery, UpdateTripBody } from "./trips.schema.js";
+import type { UpdateTripFields } from "./trips.repository.js";
 import type { TripRow } from "./trips.repository.js";
 
 /**
@@ -41,6 +50,13 @@ export interface TripsService {
   create(userId: UserId, body: CreateTripBody): Promise<Trip>;
   getById(userId: UserId, tripId: TripId): Promise<Trip>;
   list(userId: UserId, query: CursorQuery): Promise<Paginated<Trip>>;
+  update(
+    userId: UserId,
+    tripId: TripId,
+    body: UpdateTripBody,
+    expectedVersion: number | undefined,
+  ): Promise<Trip>;
+  remove(userId: UserId, tripId: TripId, expectedVersion: number | undefined): Promise<void>;
 }
 
 export function createTripsService(withTx: WithTx): TripsService {
@@ -96,6 +112,66 @@ export function createTripsService(withTx: WithTx): TripsService {
           nextCursor: hasMore && last !== undefined ? encodeCursor(last.id) : null,
         },
       };
+    },
+
+    async update(userId, tripId, body, expectedVersion) {
+      const row = await withTx(userId, async (trx) => {
+        const existing = await findTripById(trx, tripId);
+        if (existing === undefined) throw new NotFoundError("Trip");
+
+        // Checked inside the transaction, against the row we just read, so a
+        // concurrent writer cannot slip between the check and the write.
+        assertVersion(expectedVersion, existing.version);
+
+        const fields: UpdateTripFields = {};
+        if (body.name !== undefined) fields.name = body.name;
+        if (body.description !== undefined) fields.description = body.description;
+        if (body.status !== undefined) fields.status = body.status;
+        if (body.visibility !== undefined) fields.visibility = body.visibility;
+        if (body.budgetCap !== undefined) fields.budgetCap = body.budgetCap;
+        if (body.coverImageUrl !== undefined) fields.coverImageUrl = body.coverImageUrl;
+
+        // Both dates live in one daterange column, so moving either rewrites
+        // the range; the edge not named comes from the stored row.
+        if (body.startDate !== undefined || body.endDate !== undefined) {
+          const startDate = body.startDate ?? existing.start_date;
+          const endDate = body.endDate ?? existing.end_date;
+
+          if (startDate > endDate) {
+            throw new ValidationError(
+              [
+                {
+                  path: "endDate",
+                  code: "invalid_range",
+                  message: "endDate must not precede startDate",
+                },
+              ],
+              "Invalid trip dates",
+            );
+          }
+
+          fields.period = toDaterange(startDate, endDate);
+        }
+
+        const updated = await updateTrip(trx, tripId, fields);
+        if (updated === undefined) throw new NotFoundError("Trip");
+
+        return updated;
+      });
+
+      return toTrip(row);
+    },
+
+    async remove(userId, tripId, expectedVersion) {
+      await withTx(userId, async (trx) => {
+        const existing = await findTripById(trx, tripId);
+        if (existing === undefined) throw new NotFoundError("Trip");
+
+        assertVersion(expectedVersion, existing.version);
+
+        const deleted = await softDeleteTrip(trx, tripId);
+        if (deleted === 0) throw new NotFoundError("Trip");
+      });
     },
   };
 }
