@@ -87,6 +87,11 @@ export const ProblemDetailsSchema = z.object({
    * "You'd already be in Rome on those dates" (issue #41).
    */
   constraint: TemporalConstraintSchema.optional(),
+  /**
+   * Present on a 409 VERSION_MISMATCH: the version the server actually holds,
+   * so the client can reconcile without an extra round trip.
+   */
+  currentVersion: z.number().int().positive().optional(),
 });
 
 export type ProblemDetails = z.infer<typeof ProblemDetailsSchema>;

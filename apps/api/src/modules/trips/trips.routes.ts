@@ -1,10 +1,12 @@
 import { z } from "zod";
 import { TripId } from "@globetrotter/contracts";
+import { parseIfMatch } from "../../core/concurrency.js";
 import { createTripsService } from "./trips.service.js";
 import {
   CreateTripBodySchema,
   CursorQuerySchema,
   TripSchema,
+  UpdateTripBodySchema,
   envelope,
   paginated,
 } from "./trips.schema.js";
@@ -79,6 +81,53 @@ const tripsRoutes: FastifyPluginAsyncZod = async (app) => {
       // ETag carries the optimistic-concurrency version, so the client can
       // send it straight back as If-Match (issue #17).
       return reply.header("etag", `"${trip.version}"`).send({ data: trip });
+    },
+  );
+
+  app.patch(
+    "/trips/:tripId",
+    {
+      preHandler: app.authenticate,
+      schema: {
+        tags: ["trips"],
+        summary: "Partially update a trip (JSON Merge Patch)",
+        description:
+          "Send `If-Match` with the version from a previous ETag to make the write " +
+          "conditional. A mismatch returns 409 with the current server state.",
+        params: TripParamsSchema,
+        body: UpdateTripBodySchema,
+        response: { 200: envelope(TripSchema) },
+      },
+    },
+    async (request, reply) => {
+      const userId = app.requireUserId(request);
+      const expected = parseIfMatch(request.headers["if-match"]);
+
+      const trip = await service.update(userId, request.params.tripId, request.body, expected);
+
+      return reply.header("etag", `"${trip.version}"`).send({ data: trip });
+    },
+  );
+
+  app.delete(
+    "/trips/:tripId",
+    {
+      preHandler: app.authenticate,
+      schema: {
+        tags: ["trips"],
+        summary: "Soft-delete a trip",
+        description: "Honours `If-Match` the same way as PATCH.",
+        params: TripParamsSchema,
+        response: { 204: z.null() },
+      },
+    },
+    async (request, reply) => {
+      const userId = app.requireUserId(request);
+      const expected = parseIfMatch(request.headers["if-match"]);
+
+      await service.remove(userId, request.params.tripId, expected);
+
+      return reply.status(204).send(null);
     },
   );
 };

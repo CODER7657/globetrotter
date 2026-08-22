@@ -116,8 +116,15 @@ export interface TripsTable {
   base_currency: string;
   budget_cap: string | null;
   cover_image_url: string | null;
-  /** Optimistic concurrency token. Starts at 1, bumped by trigger. */
-  version: ColumnType<number, never, never>;
+  /**
+   * Optimistic concurrency token. Starts at 1.
+   *
+   * Writable on UPDATE, unlike the other database-managed columns. The
+   * notify_trip_change trigger bumps it for stops and activities but skips
+   * trips to avoid re-firing itself, so a trip-level edit has to advance it
+   * explicitly. Never supplied on INSERT — the column default owns that.
+   */
+  version: ColumnType<number, never, number>;
   created_at: Managed;
   updated_at: Managed;
   deleted_at: Timestamp | null;
