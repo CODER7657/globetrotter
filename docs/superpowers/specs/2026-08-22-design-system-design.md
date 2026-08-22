@@ -236,7 +236,7 @@ Test-first, using the vitest setup the repo already established.
 |---|---|
 | `apps/web` scaffold picks different variable names | contract posted on #24 ahead of the scaffold, with a drop-in shim using final names |
 | Root `tsconfig.json` reference conflicts | one line; whoever merges second adds theirs |
-| ADR number collision | `0001` is taken by temporal-constraints, so this is `0002` |
+| ADR number collision | `0001` and `0002` are taken, so this is `0003` |
 | Fraunces/Inter unavailable offline (#31 is offline-first) | fonts self-hosted in `apps/web`, never CDN-linked; system fallbacks on every stack |
 | shadcn changes its variable contract | the contract is pinned and dated here; a future bump is a deliberate migration |
 
@@ -252,5 +252,5 @@ Test-first, using the vitest setup the repo already established.
 | Storybook or `/kitchen-sink` route | follow-up PR — needs `apps/web` |
 | Figma link committed to the README | follow-up PR — needs the file to exist |
 
-ADR: `docs/adr/0002-design-tokens.md` records the three-layer architecture, the shadcn contract
+ADR: `docs/adr/0003-design-tokens.md` records the three-layer architecture, the shadcn contract
 pin, and the border/input divergence.

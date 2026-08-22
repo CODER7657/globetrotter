@@ -1,4 +1,4 @@
-# ADR 0002 — Design tokens as a generated, contrast-gated pipeline
+# ADR 0003 — Design tokens as a generated, contrast-gated pipeline
 
 **Status:** Accepted · **Date:** 2026-08-22 · **Issue:** #24
 

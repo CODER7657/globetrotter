@@ -1052,7 +1052,7 @@ Refs #24"
 
 **Files:**
 - Create: `docs/DESIGN.md`
-- Create: `docs/adr/0002-design-tokens.md`
+- Create: `docs/adr/0003-design-tokens.md`
 - Modify: `tsconfig.json` (root) — add the project reference
 
 **Interfaces:**
@@ -1071,7 +1071,7 @@ In root `tsconfig.json`, add to `references`:
 
 Cover, with no more than a page per section: the three layers and the rule that components use semantic tokens only; the full semantic table for both themes with measured ratios; the type, spacing, radius, shadow and motion scales; why `--ring` is not `--primary` and why `--border` and `--input` diverge; how to add a token (edit `tokens.json`, run the gate, never hand-edit `dist/`); and the PR checklist from #24.
 
-- [ ] **Step 3: Write `docs/adr/0002-design-tokens.md`**
+- [ ] **Step 3: Write `docs/adr/0003-design-tokens.md`**
 
 Standard ADR form — Context, Decision, Consequences. Record: the three-layer architecture with `--gt-` prefixed primitives; pinning shadcn/ui's variable contract, dated, and what a future bump entails; contrast as a vitest gate rather than a script; the `--border`/`--input` divergence under WCAG 1.4.11; and emitting Tailwind v4 `@theme` as the real artifact with a JS preset alongside, since #24 asks for a v3-era config file.
 
@@ -1090,7 +1090,7 @@ Expected: all green, including `@globetrotter/contracts`.
 
 ```bash
 git add docs tsconfig.json
-git commit -m "docs(design-system): DESIGN.md, ADR 0002, workspace project reference
+git commit -m "docs(design-system): DESIGN.md, ADR 0003, workspace project reference
 
 Refs #24"
 ```
