@@ -5,12 +5,15 @@
  */
 export {
   CreateStopBodySchema,
+  CreateTripActivityBodySchema,
   CreateTripBodySchema,
   CursorQuerySchema,
   ReorderStopsBodySchema,
   TripSchema,
+  TripActivitySchema,
   TripStopSchema,
   UpdateStopBodySchema,
+  UpdateTripActivityBodySchema,
   UpdateTripBodySchema,
   envelope,
   paginated,
@@ -18,11 +21,14 @@ export {
 
 export type {
   CreateStopBody,
+  CreateTripActivityBody,
   CreateTripBody,
   CursorQuery,
   ReorderStopsBody,
   Trip,
+  TripActivity,
   TripStop,
   UpdateStopBody,
+  UpdateTripActivityBody,
   UpdateTripBody,
 } from "@globetrotter/contracts";

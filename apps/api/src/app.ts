@@ -10,6 +10,7 @@ import identityPlugin from "./core/identity.js";
 import { registerErrorHandler } from "./core/error-handler.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 import healthRoutes from "./modules/health/health.routes.js";
+import activitiesRoutes from "./modules/trips/activities.routes.js";
 import stopsRoutes from "./modules/trips/stops.routes.js";
 import tripsRoutes from "./modules/trips/trips.routes.js";
 import { isProduction } from "./config.js";
@@ -100,6 +101,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
   await app.register(authRoutes, { prefix: API_PREFIX, config });
   await app.register(tripsRoutes, { prefix: API_PREFIX });
   await app.register(stopsRoutes, { prefix: API_PREFIX });
+  await app.register(activitiesRoutes, { prefix: API_PREFIX });
 
   return app;
 }
