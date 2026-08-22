@@ -39,7 +39,7 @@ export async function buildTestApp(
 ): Promise<FastifyInstance> {
   const config = loadConfig({
     NODE_ENV: "test",
-    LOG_LEVEL: "silent",
+    LOG_LEVEL: process.env["TEST_LOG_LEVEL"] ?? "silent",
     APP_DATABASE_URL: TEST_DATABASE_URL,
     CORS_ORIGINS: "http://localhost:5173",
     JWT_SECRET: "test-only-secret-must-be-at-least-32-chars-long",
