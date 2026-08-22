@@ -82,22 +82,43 @@ export async function setVisibility(
 /**
  * Bumps the view counter.
  *
- * Currently a no-op from the public path, and deliberately left in place: an
- * anonymous share-slug transaction cannot satisfy `trip_shares_write`, which
- * is FOR ALL and keyed on ownership, so this matches zero rows. It is written
- * as a plain UPDATE rather than something that throws precisely so a missing
- * view count never costs a reader their itinerary.
+ * Goes through app.record_share_view because the caller is anonymous: RLS
+ * cannot express "may update this one column", and `trip_shares_write` is
+ * keyed on ownership, so a direct UPDATE from a share transaction matches zero
+ * rows. The SECURITY DEFINER function takes the slug — a credential the caller
+ * must already hold — and touches nothing else.
  *
- * Needs a SECURITY DEFINER `app.record_share_view(text)` to actually count —
- * RLS cannot express "may update this one column". See the PR thread.
+ * Deliberately not awaited into the response path's success condition: a lost
+ * view count must never cost a reader their itinerary.
  */
 export async function recordView(trx: Tx, slug: string): Promise<void> {
-  await trx
-    .updateTable("trip_shares")
-    .set((eb) => ({ view_count: eb("view_count", "+", 1) }))
-    .where("slug", "=", slug)
-    .where("revoked_at", "is", null)
-    .execute();
+  await sql`select app.record_share_view(${slug})`.execute(trx);
+}
+
+/**
+ * Appends to the hash-chained audit log.
+ *
+ * The chain is computed by a BEFORE trigger, never supplied here — if the API
+ * could set the hash, the API could forge it. `actor_id` comes from
+ * app.current_user_id() inside the function, so it cannot be spoofed by the
+ * caller either.
+ *
+ * `event_type` must match ^[a-z]+(\.[a-z_]+)+$, hence the dotted names.
+ */
+export type TripEventType =
+  | "trip.shared"
+  | "trip.share_revoked"
+  | "trip.copied";
+
+export async function appendTripEvent(
+  trx: Tx,
+  tripId: string,
+  eventType: TripEventType,
+  payload: Record<string, unknown> = {},
+): Promise<void> {
+  await sql`
+    select app.append_trip_event(${tripId}::uuid, ${eventType}, ${JSON.stringify(payload)}::jsonb)
+  `.execute(trx);
 }
 
 // --------------------------------------------------------------- reading ---

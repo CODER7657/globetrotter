@@ -3,6 +3,7 @@ import { ErrorCode, unsafeId } from "@globetrotter/contracts";
 import { ConflictError, NotFoundError } from "../../core/errors.js";
 import { findTripById } from "../trips/trips.repository.js";
 import {
+  appendTripEvent,
   copyTripGraph,
   findActiveShare,
   findTripBySlug,
@@ -100,6 +101,15 @@ export function createSharingService(
         assertTransition(trip.visibility, visibility);
         await setVisibility(trx, tripId, visibility);
 
+        // Audited in the same transaction as the change itself, so the log
+        // cannot disagree with the state it describes (#20). The chain hash is
+        // computed by a trigger, and actor_id comes from app.current_user_id()
+        // inside the function, so neither can be forged from here.
+        await appendTripEvent(trx, tripId, "trip.shared", {
+          from: trip.visibility,
+          to: visibility,
+        });
+
         // Re-sharing returns the existing link rather than minting a second
         // one. Two live slugs for one trip would mean revoking felt done while
         // the other link kept working.
@@ -124,11 +134,30 @@ export function createSharingService(
         // Both, in one transaction. Setting visibility without revoking would
         // leave a live slug behind, and revoking without resetting visibility
         // would leave a public trip discoverable.
-        await revokeShares(trx, tripId);
+        const revoked = await revokeShares(trx, tripId);
         await setVisibility(trx, tripId, "private");
+
+        await appendTripEvent(trx, tripId, "trip.share_revoked", {
+          from: trip.visibility,
+          to: "private",
+          linksRevoked: revoked,
+        });
       });
     },
 
+    /**
+     * ALWAYS ANONYMOUS, including for the trip's own owner.
+     *
+     * This is deliberate, not incidental. The route sets
+     * `Cache-Control: public, max-age=60`; a response that varied by identity
+     * under a public cache directive would let a shared cache serve
+     * owner-shaped data to a stranger. Making it owner-aware would require
+     * `private` + `Vary: Authorization`, which discards caching on exactly the
+     * route that needs it — crawlers and link previews.
+     *
+     * A logged-in owner following their own link is the client's problem to
+     * solve, by redirecting them to the private view.
+     */
     async getPublic(slug) {
       return withShareTx(slug, async (trx) => {
         const trip = await findTripBySlug(trx, slug);
@@ -228,6 +257,15 @@ export function createSharingService(
           sourceTripId: tripId,
           newOwnerId: userId,
           name: finalName,
+        });
+
+        // Recorded against the SOURCE trip, not the copy: the fact worth
+        // auditing is that someone took a copy of this itinerary, and that is
+        // the owner's log to read.
+        await appendTripEvent(trx, tripId, "trip.copied", {
+          copyId: copied.tripId,
+          stopCount: copied.stopCount,
+          activityCount: copied.activityCount,
         });
 
         return { ...copied, name: finalName };

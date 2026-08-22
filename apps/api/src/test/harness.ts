@@ -175,7 +175,7 @@ export async function truncateAll(): Promise<void> {
     // db/tests/003 asserts against. seedCity() generates a unique slug per
     // call, so test cities never collide and never need clearing.
     `TRUNCATE TABLE
-       trip_presence, trip_activities, trip_stops, trip_collaborators,
+       trip_events, trip_presence, trip_activities, trip_stops, trip_collaborators,
        trip_shares, trips, refresh_tokens, refresh_token_families, users
      RESTART IDENTITY CASCADE`,
   );

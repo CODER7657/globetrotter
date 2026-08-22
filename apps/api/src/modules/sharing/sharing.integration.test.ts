@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
+  adminQuery,
   asUser,
   buildTestApp,
   closeHarness,
@@ -195,26 +196,28 @@ describe("sharing API", () => {
       expect((await readPublic(slug)).statusCode).toBe(404);
     });
 
-    /**
-     * TRIPWIRE — this asserts a known gap, not desired behaviour.
-     *
-     * View counting cannot work from the public path today: `trip_shares_write`
-     * is FOR ALL and requires ownership, so the UPDATE from an anonymous
-     * share-slug transaction matches zero rows. The read side is fine, because
-     * `trip_shares_read` accepts a matching `app.share_slug`.
-     *
-     * The fix is a SECURITY DEFINER `app.record_share_view(text)` (proposed in
-     * the PR). When that lands this expectation FAILS, which is the point —
-     * change the 0 to a 2 and delete this comment.
-     */
-    it("does not count views yet, pending app.record_share_view", async () => {
+    it("counts views", async () => {
       const { slug } = await shareAndGetSlug();
 
       await readPublic(slug);
       await readPublic(slug);
 
       const response = await share(owner, "unlisted");
-      expect(response.json<{ data: { viewCount: number } }>().data.viewCount).toBe(0);
+      expect(response.json<{ data: { viewCount: number } }>().data.viewCount).toBe(2);
+    });
+
+    it("still counts a view when the link holder is anonymous", async () => {
+      const { slug } = await shareAndGetSlug();
+
+      // The whole point of app.record_share_view: an anonymous transaction
+      // cannot satisfy trip_shares_write, so a direct UPDATE would silently
+      // match zero rows.
+      // readPublic sends no Authorization header at all.
+      const response = await readPublic(slug);
+      expect(response.statusCode).toBe(200);
+
+      const after = await share(owner, "unlisted");
+      expect(after.json<{ data: { viewCount: number } }>().data.viewCount).toBe(1);
     });
 
     it("serves Open Graph metadata for previews", async () => {
@@ -232,6 +235,66 @@ describe("sharing API", () => {
       expect(og.title).toBe("Iberian loop");
       expect(og.url).toContain(slug);
       expect(og.type).toBe("website");
+    });
+  });
+
+  describe("audit trail", () => {
+    it("records a hash-chained event for each visibility transition", async () => {
+      await share(owner, "unlisted");
+      await share(owner, "public");
+
+      const events = await adminQuery<{ event_type: string; payload: Record<string, string> }>(
+        `SELECT event_type, payload FROM trip_events WHERE trip_id = $1 ORDER BY seq`,
+        [tripId],
+      );
+
+      expect(events.map((e) => e.event_type)).toEqual(["trip.shared", "trip.shared"]);
+      expect(events[0]?.payload).toMatchObject({ from: "private", to: "unlisted" });
+      expect(events[1]?.payload).toMatchObject({ from: "unlisted", to: "public" });
+    });
+
+    it("records the revocation, including how many links it killed", async () => {
+      await shareAndGetSlug();
+
+      await app.inject({
+        method: "DELETE",
+        url: `/api/v1/trips/${tripId}/share`,
+        headers: asUser(owner.accessToken),
+      });
+
+      const events = await adminQuery<{ event_type: string; payload: Record<string, number> }>(
+        `SELECT event_type, payload FROM trip_events WHERE trip_id = $1 ORDER BY seq DESC LIMIT 1`,
+        [tripId],
+      );
+
+      expect(events[0]?.event_type).toBe("trip.share_revoked");
+      expect(events[0]?.payload).toMatchObject({ to: "private", linksRevoked: 1 });
+    });
+
+    it("attributes the event to the acting user, not to whoever asks later", async () => {
+      await share(owner, "public");
+
+      const events = await adminQuery<{ actor_id: string }>(
+        `SELECT actor_id FROM trip_events WHERE trip_id = $1 ORDER BY seq LIMIT 1`,
+        [tripId],
+      );
+
+      // actor_id comes from app.current_user_id() inside the SECURITY DEFINER
+      // function, so it cannot be supplied by the caller.
+      expect(events[0]?.actor_id).toBe(owner.id);
+    });
+
+    it("leaves the chain verifiably intact", async () => {
+      await share(owner, "unlisted");
+      await share(owner, "public");
+
+      const rows = await adminQuery<{ tampered: string | null }>(
+        `SELECT app.verify_trip_chain($1) AS tampered`,
+        [tripId],
+      );
+
+      // NULL means every hash still matches its predecessor.
+      expect(rows[0]?.tampered).toBeNull();
     });
   });
 
@@ -330,6 +393,20 @@ describe("sharing API", () => {
       const response = await copy(stranger);
 
       expect(response.statusCode).toBe(404);
+    });
+
+    it("records the copy against the source trip, for its owner to see", async () => {
+      await tripWithGraph();
+      await share(owner, "public");
+      await copy(stranger);
+
+      const events = await adminQuery<{ event_type: string; payload: Record<string, number> }>(
+        `SELECT event_type, payload FROM trip_events WHERE trip_id = $1 ORDER BY seq DESC LIMIT 1`,
+        [tripId],
+      );
+
+      expect(events[0]?.event_type).toBe("trip.copied");
+      expect(events[0]?.payload).toMatchObject({ stopCount: 2, activityCount: 3 });
     });
 
     it("accepts a caller-supplied name", async () => {
