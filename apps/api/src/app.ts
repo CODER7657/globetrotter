@@ -8,11 +8,15 @@ import { serializerCompiler, validatorCompiler } from "fastify-type-provider-zod
 import databasePlugin from "./db/plugin.js";
 import identityPlugin from "./core/identity.js";
 import { registerErrorHandler } from "./core/error-handler.js";
+import { registerOpenApi } from "./core/openapi.js";
+import { API_PREFIX } from "./core/constants.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 import healthRoutes from "./modules/health/health.routes.js";
 import activitiesRoutes from "./modules/trips/activities.routes.js";
 import collaboratorsRoutes from "./modules/trips/collaborators.routes.js";
 import sharingRoutes from "./modules/sharing/sharing.routes.js";
+import costRoutes from "./modules/trips/cost.routes.js";
+import searchRoutes from "./modules/catalogue/search.routes.js";
 import stopsRoutes from "./modules/trips/stops.routes.js";
 import tripsRoutes from "./modules/trips/trips.routes.js";
 import realtimeRoutes from "./modules/realtime/realtime.routes.js";
@@ -20,7 +24,9 @@ import { isProduction } from "./config.js";
 import type { FastifyInstance } from "fastify";
 import type { Config } from "./config.js";
 
-export const API_PREFIX = "/api/v1";
+// Re-exported so existing imports from app.ts keep working; the constant
+// itself lives in core/ to avoid a cycle with the OpenAPI registration.
+export { API_PREFIX } from "./core/constants.js";
 
 /**
  * Composition root. Everything is wired here and nowhere else — no module
@@ -96,6 +102,11 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
     timeWindow: "1 minute",
   });
 
+  // Registered before any route: @fastify/swagger captures schemas as routes
+  // are added, so anything registered earlier would be missing from the
+  // document.
+  await registerOpenApi(app, config);
+
   await app.register(databasePlugin, config);
   await app.register(identityPlugin, config);
 
@@ -106,6 +117,8 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
   await app.register(stopsRoutes, { prefix: API_PREFIX });
   await app.register(activitiesRoutes, { prefix: API_PREFIX });
   await app.register(collaboratorsRoutes, { prefix: API_PREFIX });
+  await app.register(costRoutes, { prefix: API_PREFIX });
+  await app.register(searchRoutes, { prefix: API_PREFIX });
   await app.register(realtimeRoutes, { prefix: API_PREFIX, config });
   await app.register(sharingRoutes, { prefix: API_PREFIX, config });
 
