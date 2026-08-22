@@ -139,6 +139,21 @@ export const CreateStopBodySchema = TripStopSchema.pick({
 
 export type CreateStopBody = z.infer<typeof CreateStopBodySchema>;
 
+/** JSON Merge Patch for a stop. Every field optional; null clears. */
+export const UpdateStopBodySchema = z
+  .object({
+    cityId: CityId,
+    arrivesAt: IsoDateTimeSchema,
+    departsAt: IsoDateTimeSchema,
+    arrivalMode: TripStopSchema.shape.arrivalMode,
+    arrivalCost: MoneyAmountSchema,
+    lodgingCost: MoneyAmountSchema,
+    notes: z.string().max(2000).nullable(),
+  })
+  .partial();
+
+export type UpdateStopBody = z.infer<typeof UpdateStopBodySchema>;
+
 /** Whole-list reorder, applied in one transaction (issue #17). */
 export const ReorderStopsBodySchema = z.object({
   stopIds: z.array(StopId).min(1),
@@ -187,3 +202,17 @@ export const CreateTripActivityBodySchema = TripActivitySchema.pick({
   });
 
 export type CreateTripActivityBody = z.infer<typeof CreateTripActivityBodySchema>;
+
+/** JSON Merge Patch for a scheduled activity. */
+export const UpdateTripActivityBodySchema = z
+  .object({
+    title: z.string().min(1).max(160),
+    startsAt: IsoDateTimeSchema,
+    endsAt: IsoDateTimeSchema,
+    category: CostCategorySchema,
+    costAmount: MoneyAmountSchema,
+    notes: z.string().max(2000).nullable(),
+  })
+  .partial();
+
+export type UpdateTripActivityBody = z.infer<typeof UpdateTripActivityBodySchema>;

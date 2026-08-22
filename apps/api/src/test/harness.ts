@@ -133,22 +133,29 @@ export function refreshCookieFrom(setCookie: string | string[] | undefined): str
 }
 
 /**
- * The catalog is read-only to the API role, so cities are seeded through the
- * admin connection. Until @pavan's #8 lands there is no city data at all.
+ * Picks seeded cities from the catalogue.
+ *
+ * The catalogue is reference data owned by db/seed, not test fixtures — so
+ * tests read it and must never write it. `truncateAll` leaves it alone for the
+ * same reason.
  */
-export async function seedCity(name = "Lisbon", countryCode = "PT"): Promise<string> {
+export async function pickCities(count = 1): Promise<string[]> {
   const { rows } = await admin().query<{ id: string }>(
-    `INSERT INTO cities (country_code, name, slug, latitude, longitude, timezone)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING id`,
-    [countryCode, name, `${name.toLowerCase()}-${randomUUID().slice(0, 8)}`,
-     "38.7223", "-9.1393", "Europe/Lisbon"],
+    `SELECT id FROM cities ORDER BY name LIMIT $1`,
+    [count],
   );
 
-  const row = rows[0];
-  if (row === undefined) throw new Error("failed to seed city");
+  if (rows.length < count) {
+    throw new Error(`need ${count} seeded cities, found ${rows.length} — is db/seed applied?`);
+  }
 
-  return row.id;
+  return rows.map((r) => r.id);
+}
+
+export async function pickCity(): Promise<string> {
+  const [city] = await pickCities(1);
+  if (city === undefined) throw new Error("no seeded cities");
+  return city;
 }
 
 /**
@@ -159,10 +166,13 @@ export async function seedCity(name = "Lisbon", countryCode = "PT"): Promise<str
  * not subject to RLS policies.
  */
 export async function truncateAll(): Promise<void> {
+  // cities and activities are seeded reference data, NOT fixtures. Truncating
+  // them CASCADEs through every trip and leaves the catalogue empty for the
+  // rest of the run.
   await admin().query(
     `TRUNCATE TABLE
        trip_activities, trip_stops, trip_collaborators, trip_shares,
-       trips, refresh_tokens, refresh_token_families, cities, users
+       trips, refresh_tokens, refresh_token_families, users
      RESTART IDENTITY CASCADE`,
   );
 }
