@@ -8,6 +8,8 @@ import { serializerCompiler, validatorCompiler } from "fastify-type-provider-zod
 import databasePlugin from "./db/plugin.js";
 import identityPlugin from "./core/identity.js";
 import { registerErrorHandler } from "./core/error-handler.js";
+import { registerOpenApi } from "./core/openapi.js";
+import { API_PREFIX } from "./core/constants.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 import healthRoutes from "./modules/health/health.routes.js";
 import activitiesRoutes from "./modules/trips/activities.routes.js";
@@ -21,7 +23,9 @@ import { isProduction } from "./config.js";
 import type { FastifyInstance } from "fastify";
 import type { Config } from "./config.js";
 
-export const API_PREFIX = "/api/v1";
+// Re-exported so existing imports from app.ts keep working; the constant
+// itself lives in core/ to avoid a cycle with the OpenAPI registration.
+export { API_PREFIX } from "./core/constants.js";
 
 /**
  * Composition root. Everything is wired here and nowhere else — no module
@@ -96,6 +100,11 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
     max: 300,
     timeWindow: "1 minute",
   });
+
+  // Registered before any route: @fastify/swagger captures schemas as routes
+  // are added, so anything registered earlier would be missing from the
+  // document.
+  await registerOpenApi(app, config);
 
   await app.register(databasePlugin, config);
   await app.register(identityPlugin, config);
