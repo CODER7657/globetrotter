@@ -9,6 +9,7 @@
     "typecheck": "tsc -b && tsc -p tsconfig.test.json",
     "dev": "node --watch --import tsx src/server.ts",
     "start": "node dist/server.js",
+    "pretest": "pnpm --filter @globetrotter/contracts build",
     "test": "vitest run",
     "test:watch": "vitest"
   },

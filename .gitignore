@@ -9,3 +9,6 @@ coverage/
 .DS_Store
 .idea/
 .vscode/
+
+# Per-developer Claude Code permissions — not shared
+.claude/settings.local.json

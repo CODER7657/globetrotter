@@ -10,7 +10,7 @@
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
-    "test": "pnpm -r test",
+    "test": "pnpm -r build && pnpm -r test",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:migrate": "docker compose run --rm migrate",
