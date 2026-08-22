@@ -6,7 +6,7 @@
  */
 
 import { writeFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { flatten, loadTokens, resolveAlias, type TokenTree } from './tokens.js'
 
 /** DTCG `$type` per primitive group, used by the Figma export. */
@@ -205,8 +205,18 @@ function main(): void {
   }
 }
 
+// Is this module the process entry point?
+//
+// The previous form was `import.meta.url === \`file:///${process.argv[1]...}\``.
+// On Windows argv[1] is `D:\...` so prefixing `file:///` produced a correct
+// three-slash URL. On POSIX argv[1] already starts with `/`, so the same prefix
+// produced `file:////home/...` — FOUR slashes — which never matched.
+//
+// The generator therefore did nothing on Linux and exited 0. theme.css was
+// never emitted, the web build could not resolve it, and CI failed while every
+// local Windows build passed. pathToFileURL() is the platform-correct answer.
 const invokedDirectly =
-  process.argv[1] !== undefined && import.meta.url === `file:///${process.argv[1].replace(/\\/g, '/')}`
+  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href
 
 if (invokedDirectly) {
   main()
