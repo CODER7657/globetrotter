@@ -28,8 +28,8 @@ export interface AccessTokenClaims {
 export interface Tokens {
   sign(claims: AccessTokenClaims): Promise<{ token: string; expiresAt: Date }>;
   verify(token: string): Promise<AccessTokenClaims>;
-  mintRefreshToken(): { plaintext: string; hash: string; expiresAt: Date };
-  hashRefreshToken(plaintext: string): string;
+  mintRefreshToken(): { plaintext: string; hash: Buffer; expiresAt: Date };
+  hashRefreshToken(plaintext: string): Buffer;
 }
 
 export function createTokens(config: Config): Tokens {
@@ -96,7 +96,9 @@ export function createTokens(config: Config): Tokens {
  * SHA-256, not Argon2. Deliberate: the token is 256 random bits, so there is
  * no low-entropy guess space for a slow hash to protect. Argon2 here would
  * only make every refresh request cost 50ms.
+ *
+ * Returns a Buffer because `refresh_tokens.token_hash` is `bytea`.
  */
-function sha256(plaintext: string): string {
-  return createHash("sha256").update(plaintext, "utf8").digest("hex");
+function sha256(plaintext: string): Buffer {
+  return createHash("sha256").update(plaintext, "utf8").digest();
 }

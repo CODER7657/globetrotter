@@ -2,13 +2,14 @@ import { ErrorCode, unsafeId } from "@globetrotter/contracts";
 import { AppError, ConflictError, ValidationError } from "../../core/errors.js";
 import { hashPassword, scorePassword, verifyPassword } from "../../core/password.js";
 import {
+  adoptIdentity,
   createTokenFamily,
   findRefreshTokenByHash,
   findUserByEmail,
   findUserById,
   insertRefreshToken,
   insertUser,
-  markTokenUsed,
+  markTokenConsumed,
   revokeFamily,
 } from "./auth.repository.js";
 import type { AuthSession, LoginBody, PublicUser, SignupBody, UserId } from "@globetrotter/contracts";
@@ -122,6 +123,8 @@ export function createAuthService(withTx: WithTx, tokens: Tokens): AuthService {
           throw error;
         });
 
+        // insertUser already adopted the new id, which the WITH CHECK on
+        // rtf_owner requires before a family may be created.
         const familyId = await createTokenFamily(trx, user.id, userAgent);
         return issue(user, familyId, trx);
       });
@@ -136,6 +139,10 @@ export function createAuthService(withTx: WithTx, tokens: Tokens): AuthService {
         if (!ok || user === undefined) {
           throw invalidCredentials();
         }
+
+        // The caller is authenticated as of this line; publish the identity so
+        // the family INSERT satisfies rtf_owner.
+        await adoptIdentity(trx, user.id);
 
         const familyId = await createTokenFamily(trx, user.id, userAgent);
         return issue(user, familyId, trx);
@@ -159,40 +166,38 @@ export function createAuthService(withTx: WithTx, tokens: Tokens): AuthService {
         | { kind: "unknown" }
         | { kind: "revoked" }
         | { kind: "expired" }
-        | { kind: "replay"; familyId: string }
-        | { kind: "inactive"; familyId: string };
+        | { kind: "replay"; familyId: string; userId: string }
+        | { kind: "inactive"; familyId: string; userId: string };
 
       const outcome = await withTx(null, async (trx): Promise<Outcome> => {
-        // FOR UPDATE serialises concurrent refreshes of the same token, so two
-        // parallel requests cannot both rotate it and each mint a session.
-        const found = await findRefreshTokenByHash(trx, tokenHash, { lock: true });
+        const found = await findRefreshTokenByHash(trx, tokenHash);
 
         if (found === undefined) return { kind: "unknown" };
         if (found.familyRevokedAt !== null) return { kind: "revoked" };
 
-        // THE REPLAY CASE. This token was already rotated, so the copy being
+        // THE REPLAY CASE. This token was already consumed, so the copy being
         // presented now is one someone kept. Either it leaked, or the real
         // client raced itself — and we cannot tell which. Assume compromise.
-        if (found.usedAt !== null) return { kind: "replay", familyId: found.familyId };
+        if (found.consumedAt !== null) {
+          return { kind: "replay", familyId: found.familyId, userId: found.userId };
+        }
 
         if (found.expiresAt.getTime() <= Date.now()) return { kind: "expired" };
 
+        // Possession of an unconsumed token authenticates the bearer, so the
+        // identity can be published from here on.
+        await adoptIdentity(trx, found.userId);
+
         const user = await findUserById(trx, found.userId);
-        if (user === undefined) return { kind: "inactive", familyId: found.familyId };
+        if (user === undefined) {
+          return { kind: "inactive", familyId: found.familyId, userId: found.userId };
+        }
 
         const issued = await issue(user, found.familyId, trx);
 
-        // Mark the old token used only once its replacement exists, so a
+        // Mark the old token consumed only once its replacement exists, so a
         // failure part-way cannot strand the user with no valid token.
-        const replacement = await findRefreshTokenByHash(
-          trx,
-          tokens.hashRefreshToken(issued.refreshToken),
-        );
-        if (replacement === undefined) {
-          throw new Error("replacement refresh token vanished within the transaction");
-        }
-
-        await markTokenUsed(trx, found.tokenId, replacement.tokenId);
+        await markTokenConsumed(trx, found.tokenId);
 
         return { kind: "ok", issued };
       });
@@ -205,7 +210,7 @@ export function createAuthService(withTx: WithTx, tokens: Tokens): AuthService {
           // Destroying the whole family logs out the attacker AND the
           // legitimate user, who then re-authenticates. That is the intended
           // trade: we cannot tell them apart.
-          await withTx(null, (trx) =>
+          await withTx(outcome.userId, (trx) =>
             revokeFamily(trx, outcome.familyId, "replay_detected"),
           );
           throw new AppError(
@@ -214,7 +219,9 @@ export function createAuthService(withTx: WithTx, tokens: Tokens): AuthService {
           );
 
         case "inactive":
-          await withTx(null, (trx) => revokeFamily(trx, outcome.familyId, "admin_revoked"));
+          await withTx(outcome.userId, (trx) =>
+            revokeFamily(trx, outcome.familyId, "admin_revoked"),
+          );
           throw new AppError(ErrorCode.UNAUTHENTICATED, "Account is no longer active");
 
         case "expired":
@@ -237,6 +244,8 @@ export function createAuthService(withTx: WithTx, tokens: Tokens): AuthService {
         // (no session) is already true.
         if (found === undefined) return;
 
+        // Holding the token is what authorises revoking its family.
+        await adoptIdentity(trx, found.userId);
         await revokeFamily(trx, found.familyId, "logout");
       });
     },
