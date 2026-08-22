@@ -132,6 +132,15 @@ describe("no route is accidentally public", () => {
     // Logout must work even with an expired access token, or a user whose
     // token lapsed can never clear their session.
     "POST /api/v1/auth/logout",
+    // Catalogue: seeded reference data only — cities, activities and the search
+    // over them. No user rows, no RLS-protected table, nothing that varies by
+    // caller. The landing page reads these while signed out (globe arcs, live
+    // counters), so requiring a token would break the first screen a visitor
+    // sees. Verified rather than assumed: the module's only database access is
+    // app.search_places(), and an anonymous app-role connection sees 0 trips.
+    "GET /api/v1/search",
+    "GET /api/v1/cities",
+    "GET /api/v1/activities",
   ]);
 
   beforeAll(async () => {

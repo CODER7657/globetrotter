@@ -93,7 +93,7 @@ export async function rawRequest<T>(path: string, options: RequestOptions = {}):
   let response: Response
   try {
     response = await fetch(`${API_BASE}${path}`, init)
-  } catch (cause) {
+  } catch {
     // Distinguish "the network failed" from "the server said no" — the first is
     // retryable and the second is not, and the messages differ for the user.
     throw new ApiError(0, null, 'Could not reach the server. Check your connection.')
