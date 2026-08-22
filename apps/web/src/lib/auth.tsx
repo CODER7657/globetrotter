@@ -6,7 +6,7 @@ import type {
 } from '@globetrotter/contracts'
 import { createContext, use, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { ApiError, request } from './api.js'
+import { ApiError, request, setAccessTokenProvider } from './api.js'
 
 /**
  * Session state.
@@ -34,6 +34,12 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {
   const tokenRef = useRef<string | null>(null)
   const [user, setUser] = useState<PublicUser | null>(null)
   const [status, setStatus] = useState<Status>('loading')
+
+  // Registered once so every call site — including screens that never think
+  // about auth — sends the header.
+  useEffect(() => {
+    setAccessTokenProvider(() => tokenRef.current)
+  }, [])
 
   const adopt = useCallback((session: AuthSession): void => {
     tokenRef.current = session.accessToken

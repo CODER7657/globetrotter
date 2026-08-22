@@ -42,7 +42,7 @@ function Providers({ children }: { readonly children: React.ReactNode }) {
 }
 
 /** Public routes that render without a session and without the app shell. */
-const PUBLIC_ROUTES = new Set([...BARE_ROUTES, '/welcome', '/kitchen-sink'])
+const PUBLIC_ROUTES = new Set([...BARE_ROUTES, '/welcome'])
 
 function Shell() {
   const pathname = useRouterState({ select: (state) => state.location.pathname })

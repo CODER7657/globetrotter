@@ -5,7 +5,6 @@ import { NAV } from './app-shell.js'
 
 const EXTRA: ReadonlyArray<{ readonly to: string; readonly label: string }> = [
   { to: '/trips/new', label: 'Create a new trip' },
-  { to: '/kitchen-sink', label: 'Design system — kitchen sink' },
 ]
 
 /**

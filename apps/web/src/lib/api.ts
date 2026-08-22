@@ -18,6 +18,20 @@ import {
 export const API_BASE = '/api/v1'
 
 /**
+ * How the client obtains the current access token.
+ *
+ * Registered by AuthProvider, which holds the token in memory. Callers do not
+ * pass it: a screen that forgets would silently call the API unauthenticated
+ * and get "Missing bearer access token" with nothing pointing at the cause.
+ * One place knows about auth, and it is this one.
+ */
+let accessTokenProvider: () => string | null = () => null
+
+export function setAccessTokenProvider(provider: () => string | null): void {
+  accessTokenProvider = provider
+}
+
+/**
  * A failed request, with the field-level detail already extracted.
  *
  * `fieldErrors` maps the server's `path` straight onto a form field name, so
@@ -86,7 +100,8 @@ export async function rawRequest<T>(path: string, options: RequestOptions = {}):
 
   const headers: Record<string, string> = { Accept: 'application/json' }
   if (body !== undefined) headers['Content-Type'] = 'application/json'
-  if (accessToken != null) headers['Authorization'] = `Bearer ${accessToken}`
+  const bearer = accessToken ?? accessTokenProvider()
+  if (bearer != null) headers['Authorization'] = `Bearer ${bearer}`
   if (ifMatch !== undefined) headers['If-Match'] = `"${String(ifMatch)}"`
 
   const init: RequestInit = { method, headers, credentials: 'include' }
