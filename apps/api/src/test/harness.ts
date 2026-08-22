@@ -160,9 +160,13 @@ export async function seedCity(name = "Lisbon", countryCode = "PT"): Promise<str
  */
 export async function truncateAll(): Promise<void> {
   await admin().query(
+    // Deliberately NOT `cities`: truncating it CASCADEs away activities,
+    // activity_schedules and city_cost_index — the seeded catalogue that
+    // db/tests/003 asserts against. seedCity() generates a unique slug per
+    // call, so test cities never collide and never need clearing.
     `TRUNCATE TABLE
-       trip_activities, trip_stops, trip_collaborators, trip_shares,
-       trips, refresh_tokens, refresh_token_families, cities, users
+       trip_presence, trip_activities, trip_stops, trip_collaborators,
+       trip_shares, trips, refresh_tokens, refresh_token_families, users
      RESTART IDENTITY CASCADE`,
   );
 }

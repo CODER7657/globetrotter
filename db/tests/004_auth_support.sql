@@ -3,6 +3,19 @@
 -- ============================================================================
 TRUNCATE test.results;
 
+-- This suite cannot run inside a transaction (it uses SET ROLE), so its rows
+-- persist and it MUST be idempotent — otherwise the second run collides on the
+-- fixed fixture ids and CI fails on any rerun. Clear our own fixtures first.
+DELETE FROM trip_presence      WHERE trip_id IN ('00000000-0000-0000-0000-000000000000');
+DELETE FROM trip_activities    WHERE stop_id IN ('00000000-0000-0000-0000-000000000000');
+DELETE FROM trip_collaborators WHERE trip_id IN ('00000000-0000-0000-0000-000000000000');
+DELETE FROM trip_stops         WHERE trip_id IN ('00000000-0000-0000-0000-000000000000');
+DELETE FROM trips              WHERE id      IN ('00000000-0000-0000-0000-000000000000');
+DELETE FROM refresh_tokens          WHERE family_id IN ('f1000000-0000-7000-8000-00000000000f');
+DELETE FROM refresh_token_families  WHERE id        IN ('f1000000-0000-7000-8000-00000000000f');
+DELETE FROM users              WHERE id      IN ('f0000000-0000-7000-8000-00000000000f','99999999-9999-7999-8999-999999999999');
+DELETE FROM users WHERE email IN ('plain@example.test','ret@example.test');
+
 INSERT INTO users(id,email,password_hash,display_name)
  VALUES ('f0000000-0000-7000-8000-00000000000f','probe@example.test',repeat('$argon2id$',4),'Probe')
  ON CONFLICT DO NOTHING;

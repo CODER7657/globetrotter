@@ -11,6 +11,7 @@ import { registerErrorHandler } from "./core/error-handler.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 import healthRoutes from "./modules/health/health.routes.js";
 import tripsRoutes from "./modules/trips/trips.routes.js";
+import realtimeRoutes from "./modules/realtime/realtime.routes.js";
 import { isProduction } from "./config.js";
 import type { FastifyInstance } from "fastify";
 import type { Config } from "./config.js";
@@ -98,6 +99,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
   await app.register(healthRoutes);
   await app.register(authRoutes, { prefix: API_PREFIX, config });
   await app.register(tripsRoutes, { prefix: API_PREFIX });
+  await app.register(realtimeRoutes, { prefix: API_PREFIX, config });
 
   return app;
 }

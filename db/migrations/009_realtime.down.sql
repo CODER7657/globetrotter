@@ -1,0 +1,10 @@
+DROP TRIGGER IF EXISTS trip_activities_notify ON trip_activities;
+DROP TRIGGER IF EXISTS trip_stops_notify      ON trip_stops;
+DROP TRIGGER IF EXISTS trips_notify           ON trips;
+DROP POLICY  IF EXISTS trip_presence_write    ON trip_presence;
+DROP POLICY  IF EXISTS trip_presence_read     ON trip_presence;
+DROP TABLE   IF EXISTS trip_presence;
+DROP FUNCTION IF EXISTS app.reap_stale_presence(interval);
+DROP FUNCTION IF EXISTS app.notify_trip_change();
+DROP FUNCTION IF EXISTS app.bump_trip_version(uuid);
+DROP FUNCTION IF EXISTS app.trip_channel(uuid);

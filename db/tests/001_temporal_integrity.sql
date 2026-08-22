@@ -104,13 +104,19 @@ SELECT test.expect_ok($$
   DELETE FROM trips WHERE id = 'bbbbbbbb-bbbb-7bbb-8bbb-bbbbbbbbbbbb'
 $$, 'CASCADE  deleting a trip with stops and activities succeeds');
 
+-- Scoped to THIS trip. Counting every row in the table only passes on an empty
+-- database, which makes the assertion order-dependent and a CI flake waiting to
+-- happen — it caught exactly that when the API suite left rows behind.
 SELECT test.expect_eq(
-  $$SELECT count(*)::text FROM trip_activities$$, '0',
-  'CASCADE  no orphaned activities remain');
+  $$SELECT count(*)::text FROM trip_activities ta
+     WHERE ta.stop_id IN ('cccccccc-cccc-7ccc-8ccc-cccccccccc01',
+                          'cccccccc-cccc-7ccc-8ccc-cccccccccc02')$$,
+  '0', 'CASCADE  no orphaned activities remain for the deleted trip');
 
 SELECT test.expect_eq(
-  $$SELECT count(*)::text FROM trip_stops$$, '0',
-  'CASCADE  no orphaned stops remain');
+  $$SELECT count(*)::text FROM trip_stops
+     WHERE trip_id = 'bbbbbbbb-bbbb-7bbb-8bbb-bbbbbbbbbbbb'$$,
+  '0', 'CASCADE  no orphaned stops remain for the deleted trip');
 
 -- ══════════ FIELD VALIDATION — the CHECK constraints ═══════════════════════
 SELECT test.expect_error($$

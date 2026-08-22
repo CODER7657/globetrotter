@@ -10,6 +10,18 @@
 
 TRUNCATE test.results;   -- each suite reports only its own assertions
 
+-- This suite cannot run inside a transaction (it uses SET ROLE), so its rows
+-- persist and it MUST be idempotent — otherwise the second run collides on the
+-- fixed fixture ids and CI fails on any rerun. Clear our own fixtures first.
+DELETE FROM trip_presence      WHERE trip_id IN ('a1000000-0000-7000-8000-00000000000a','a2000000-0000-7000-8000-00000000000a');
+DELETE FROM trip_activities    WHERE stop_id IN ('a1100000-0000-7000-8000-00000000000a');
+DELETE FROM trip_collaborators WHERE trip_id IN ('a1000000-0000-7000-8000-00000000000a','a2000000-0000-7000-8000-00000000000a');
+DELETE FROM trip_stops         WHERE trip_id IN ('a1000000-0000-7000-8000-00000000000a','a2000000-0000-7000-8000-00000000000a');
+DELETE FROM trips              WHERE id      IN ('a1000000-0000-7000-8000-00000000000a','a2000000-0000-7000-8000-00000000000a');
+DELETE FROM refresh_tokens          WHERE family_id IN ('00000000-0000-0000-0000-000000000000');
+DELETE FROM refresh_token_families  WHERE id        IN ('00000000-0000-0000-0000-000000000000');
+DELETE FROM users              WHERE id      IN ('a0000000-0000-7000-8000-00000000000a','b0000000-0000-7000-8000-00000000000b','c0000000-0000-7000-8000-00000000000c');
+
 -- ------------------------------------------------------------- fixtures ---
 -- Seeded as the migration role (superuser), before we drop to the app role.
 -- USD is required even though this suite uses EUR: users.home_currency defaults

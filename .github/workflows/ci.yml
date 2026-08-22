@@ -1,0 +1,207 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  # A new push to a PR cancels the previous run. On an 8-hour clock, waiting on
+  # a superseded run is pure dead time.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22"
+  PNPM_VERSION: "9.15.0"
+
+jobs:
+  # ───────────────────────────────────────────────────────────────────────────
+  # The database is checked on its own, against a real PostgreSQL 18, because
+  # the integrity guarantees ARE the product. A mocked query layer would prove
+  # nothing about an exclusion constraint.
+  # ───────────────────────────────────────────────────────────────────────────
+  database:
+    name: database (PG18)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: globetrotter
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d globetrotter"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/globetrotter
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install psql 18 client
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] \
+            https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-18
+
+      - name: Confirm the server really is PostgreSQL 18
+        # The temporal PRIMARY KEY / FOREIGN KEY syntax in 004 does not exist
+        # before 18. Failing here with a clear message beats a confusing
+        # syntax error thirty lines into a migration.
+        run: |
+          V=$(psql "$DATABASE_URL" -tAc "SHOW server_version_num")
+          echo "server_version_num=$V"
+          if [ "$V" -lt 180000 ]; then
+            echo "::error::PostgreSQL 18+ required for temporal constraints (got $V)"
+            exit 1
+          fi
+
+      - name: Migrate up
+        run: ./db/scripts/migrate.sh up
+
+      - name: Seed
+        run: ./db/scripts/migrate.sh seed
+
+      - name: SQL test suite
+        # 79 assertions. Exits non-zero if any fails — verified deliberately.
+        run: ./db/scripts/test.sh
+
+      - name: Every migration reverses cleanly
+        # A down migration nobody runs is a down migration that does not work.
+        # This asserts the schema returns to EMPTY, not merely that down exited 0.
+        run: |
+          COUNT=$(ls db/migrations/*.up.sql | wc -l)
+          for _ in $(seq 1 "$COUNT"); do ./db/scripts/migrate.sh down; done
+          LEFT=$(psql "$DATABASE_URL" -tAc "
+            SELECT count(*) FROM (
+              SELECT tablename t FROM pg_tables
+               WHERE schemaname='public' AND tablename<>'schema_migrations'
+              UNION ALL SELECT matviewname FROM pg_matviews WHERE schemaname='public'
+              UNION ALL SELECT typname FROM pg_type
+               WHERE typnamespace='public'::regnamespace AND typtype='e'
+              UNION ALL SELECT rolname FROM pg_roles WHERE rolname='globetrotter_app'
+            ) s")
+          echo "objects remaining after full down: $LEFT"
+          if [ "$LEFT" != "0" ]; then
+            echo "::error::down migrations left $LEFT object(s) behind"
+            psql "$DATABASE_URL" -c "\dt public.*"
+            exit 1
+          fi
+
+      - name: Re-apply from zero
+        run: ./db/scripts/migrate.sh up && ./db/scripts/migrate.sh seed
+
+      - name: Performance snapshot
+        # Not a gate — a number in the log. The pitch quotes it, so it should
+        # never be a surprise on the day.
+        run: ./db/scripts/perf.sh || true
+
+  # ───────────────────────────────────────────────────────────────────────────
+  build:
+    name: lint · typecheck · test
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: globetrotter
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d globetrotter"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/globetrotter
+      APP_DATABASE_URL: postgresql://globetrotter_app:globetrotter_app@localhost:5432/globetrotter
+      NODE_ENV: test
+      LOG_LEVEL: silent
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install psql 18 client
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] \
+            https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-18
+
+      - name: Prepare database
+        run: ./db/scripts/migrate.sh up && ./db/scripts/migrate.sh seed
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        # Root `test` builds workspace deps first. Without that, apps/api cannot
+        # resolve @globetrotter/contracts and vitest collects ZERO integration
+        # tests while still reporting green.
+        run: pnpm test
+
+  # ───────────────────────────────────────────────────────────────────────────
+  compose:
+    name: fresh clone boots
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: docker compose up
+        # Ship-checklist item: a stranger clones the repo and has a working
+        # database in under two minutes. Locally this takes ~7s.
+        run: |
+          cp .env.example .env
+          START=$(date +%s)
+          docker compose up -d
+          docker wait gt-migrate
+          ELAPSED=$(( $(date +%s) - START ))
+          echo "boot to migrated: ${ELAPSED}s"
+          docker logs gt-migrate
+          if ! docker logs gt-migrate 2>&1 | grep -q '008_auth_support'; then
+            echo "::error::migrations did not complete"
+            exit 1
+          fi
+          if [ "$ELAPSED" -gt 120 ]; then
+            echo "::error::boot took ${ELAPSED}s, budget is 120s"
+            exit 1
+          fi
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
