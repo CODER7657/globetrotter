@@ -1,0 +1,15 @@
+{
+  // Tests are excluded from the build (they must not land in dist/) but are
+  // still type-checked, via `pnpm typecheck`. Excluding them from both would
+  // mean the suite silently rots.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts", "vitest.config.ts"],
+  "references": [{ "path": "../../packages/contracts" }]
+}
