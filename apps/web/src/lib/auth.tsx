@@ -66,18 +66,18 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {
     if (bootstrapped.current) return
     bootstrapped.current = true
 
-    let cancelled = false
+    // Deliberately no `cancelled` flag. Under StrictMode the first mount's
+    // cleanup runs before the remount, so a flag would discard the result of
+    // the only request the guard above allows — leaving status stuck on
+    // 'loading' and the app on its skeleton forever. React 18+ does not warn
+    // about setting state after unmount, so letting it land is correct.
     void (async () => {
       try {
-        const session = await request<AuthSession>('/auth/refresh', { method: 'POST' })
-        if (!cancelled) adopt(session)
+        adopt(await request<AuthSession>('/auth/refresh', { method: 'POST' }))
       } catch {
-        if (!cancelled) clear()
+        clear()
       }
     })()
-    return () => {
-      cancelled = true
-    }
   }, [adopt, clear])
 
   const login = useCallback(
