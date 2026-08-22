@@ -5,6 +5,7 @@ import type { PublicUser } from '@globetrotter/contracts'
 import { getOne } from '../lib/api.js'
 import { Button, ErrorState, Skeleton } from '../components/primitives.js'
 import { ThemeToggle } from '../components/theme-toggle.js'
+import { useCurrency } from '../lib/currency.js'
 import { useToast } from '../components/toast.js'
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'INR', 'AUD'] as const
@@ -35,15 +36,9 @@ function SettingsScreen() {
     retry: false,
   })
 
-  // Currency is a display preference with no endpoint behind it yet, so it
-  // lives locally rather than pretending to persist server-side.
-  const [currency, setCurrency] = useState(() => {
-    try {
-      return localStorage.getItem(CURRENCY_KEY) ?? 'USD'
-    } catch {
-      return 'USD'
-    }
-  })
+  // The shared preference: the cost panel and every money figure format
+  // through it, so changing it here changes the whole app.
+  const { preferred: currency, setPreferred: setCurrency } = useCurrency()
 
   const [confirmEmail, setConfirmEmail] = useState('')
 

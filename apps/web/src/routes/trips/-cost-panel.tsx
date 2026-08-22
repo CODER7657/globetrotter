@@ -13,6 +13,7 @@ import {
   YAxis,
 } from 'recharts'
 import { Skeleton } from '../../components/primitives.js'
+import { useCurrency } from '../../lib/currency.js'
 import { useCost } from '../../lib/trips.js'
 
 /**
@@ -38,22 +39,18 @@ function colorAt(index: number): string {
   return CHART_COLORS[index % CHART_COLORS.length] ?? CHART_COLORS[0]
 }
 
-function money(value: number, currency: string): string {
-  return new Intl.NumberFormat(undefined, {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 0,
-  }).format(value)
-}
+/**
+ * All display money goes through the traveller's preferred currency. The
+ * numbers themselves are still the ones the database computed — this converts
+ * for display only, and falls back to the trip's own currency when no rate
+ * exists rather than mislabelling the amount.
+ */
 
 /**
  * Recharts hands the formatter `ValueType | undefined`, so narrow rather than
  * assume a number — a tooltip on an empty slice would otherwise render "NaN".
  */
-function moneyTooltip(currency: string) {
-  return (value: unknown): string =>
-    typeof value === 'number' ? money(value, currency) : String(value ?? '')
-}
+
 
 function Stat({ label, value }: { readonly label: string; readonly value: string }) {
   return (
@@ -66,6 +63,8 @@ function Stat({ label, value }: { readonly label: string; readonly value: string
 
 export function CostPanel({ tripId }: { readonly tripId: string }) {
   const { data, isPending, isError } = useCost(tripId)
+  const { format } = useCurrency()
+  const money = format
 
   if (isPending) {
     return (
@@ -138,7 +137,7 @@ export function CostPanel({ tripId }: { readonly tripId: string }) {
                     <Cell key={entry.name} fill={colorAt(index)} />
                   ))}
                 </Pie>
-                <Tooltip formatter={moneyTooltip(data.currency)} />
+                <Tooltip formatter={(value: unknown) => (typeof value === 'number' ? money(value, data.currency) : String(value ?? ''))} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -179,7 +178,7 @@ export function CostPanel({ tripId }: { readonly tripId: string }) {
                 <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="day" hide />
                 <YAxis hide />
-                <Tooltip formatter={moneyTooltip(data.currency)} />
+                <Tooltip formatter={(value: unknown) => (typeof value === 'number' ? money(value, data.currency) : String(value ?? ''))} />
                 <Bar dataKey="amount" fill="var(--chart-1)" radius={2} />
               </BarChart>
             </ResponsiveContainer>
@@ -196,7 +195,7 @@ export function CostPanel({ tripId }: { readonly tripId: string }) {
                 <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="city" hide />
                 <YAxis hide />
-                <Tooltip formatter={moneyTooltip(data.currency)} />
+                <Tooltip formatter={(value: unknown) => (typeof value === 'number' ? money(value, data.currency) : String(value ?? ''))} />
                 <Line
                   type="monotone"
                   dataKey="runningTotal"

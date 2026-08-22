@@ -6,6 +6,7 @@ export {
   CatalogueActivitySchema,
   CityQuerySchema,
   CitySchema,
+  FxRateSchema,
   SearchQuerySchema,
   SearchResultSchema,
   envelope,

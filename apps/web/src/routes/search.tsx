@@ -1,7 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
-import { getList, query } from '../lib/api.js'
+import type { SearchHit, SearchResult } from '@globetrotter/contracts'
+import { query, request } from '../lib/api.js'
 import { Button, EmptyState, ErrorState, Skeleton, buttonClasses } from '../components/primitives.js'
 
 /**
@@ -15,18 +16,6 @@ import { Button, EmptyState, ErrorState, Skeleton, buttonClasses } from '../comp
  */
 type MatchArm = 'exact' | 'fulltext' | 'fuzzy' | 'semantic'
 
-interface SearchHit {
-  readonly id: string
-  readonly kind: 'city' | 'activity'
-  readonly name: string
-  readonly country: string | null
-  readonly countryCode: string | null
-  readonly region: string | null
-  /** 0–100, where 100 is the most expensive place in the index. */
-  readonly costIndex: number | null
-  readonly bestSeason: string | null
-  readonly matched_by: readonly MatchArm[]
-}
 
 const EXAMPLES = [
   'cheap romantic coastal town in October',
@@ -39,6 +28,15 @@ const ARM_LABEL: Readonly<Record<MatchArm, string>> = {
   fulltext: 'Text',
   fuzzy: 'Typo-tolerant',
   semantic: 'Meaning',
+}
+
+/**
+ * `matchedBy` is `string[]` in the contract, deliberately — the database owns
+ * the arm names and can add one without a client release. An unknown arm is
+ * shown as-is rather than crashing on a missing label.
+ */
+function armLabel(arm: string): string {
+  return arm in ARM_LABEL ? ARM_LABEL[arm as MatchArm] : arm
 }
 
 /** A country code to its flag, via regional indicator symbols. */
@@ -87,12 +85,16 @@ function SearchScreen() {
     // so typing does not flash the list empty on every keystroke.
     placeholderData: keepPreviousData,
     queryFn: () =>
-      getList<SearchHit>(
+      request<SearchResult>(
         `/search${query({ q: debounced, kind: kind === 'all' ? undefined : kind, limit: 25 })}`,
       ),
   })
 
-  const hits = results.data?.data ?? []
+  // `hits` is empty on a miss and `suggestions` carries popular fallbacks, so a
+  // dead end never reaches the screen.
+  const hits: readonly SearchHit[] = results.data?.hits ?? []
+  const suggestions: readonly SearchHit[] = results.data?.suggestions ?? []
+  const shown = hits.length > 0 ? hits : suggestions
 
   /**
    * The typo-tolerance tell.
@@ -102,9 +104,9 @@ function SearchScreen() {
    * makes the hybrid search visible rather than looking like a plain LIKE.
    */
   const rescuedByFuzzy =
-    hits.length > 0 && hits.every((hit) => hit.matched_by.length === 1 && hit.matched_by[0] === 'fuzzy')
+    hits.length > 0 && hits.every((hit) => hit.matchedBy.length === 1 && hit.matchedBy[0] === 'fuzzy')
 
-  const usedSemantic = hits.some((hit) => hit.matched_by.includes('semantic'))
+  const usedSemantic = hits.some((hit) => hit.matchedBy.includes('semantic'))
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -220,9 +222,9 @@ function SearchScreen() {
         </div>
       )}
 
-      {hits.length > 0 && (
+      {shown.length > 0 && (
         <ul className="mt-8 flex flex-col gap-2">
-          {hits.map((hit) => (
+          {shown.map((hit) => (
             <li
               key={`${hit.kind}-${hit.id}`}
               className="flex items-center gap-4 rounded-[var(--radius-md)] border border-border bg-card px-4 py-3"
@@ -234,44 +236,44 @@ function SearchScreen() {
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">{highlight(hit.name, debounced)}</p>
                 <p className="truncate text-sm text-muted-foreground">
-                  {[hit.region, hit.country].filter((part) => part !== null).join(', ') || hit.kind}
+                  {hit.subtitle ?? hit.kind}
                 </p>
               </div>
 
-              {hit.bestSeason !== null && (
+              {hit.costAmount !== null && hit.currency !== null && (
                 <span className="hidden shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground sm:block">
-                  Best in {hit.bestSeason}
+                  from {hit.costAmount} {hit.currency}
                 </span>
               )}
 
-              {hit.costIndex !== null && (
+              {hit.popularity !== null && (
                 <div className="hidden w-24 shrink-0 sm:block">
                   <div
                     role="meter"
-                    aria-valuenow={hit.costIndex}
+                    aria-valuenow={hit.popularity}
                     aria-valuemin={0}
                     aria-valuemax={100}
-                    aria-label={`Cost index ${String(hit.costIndex)} of 100`}
+                    aria-label={`Popularity ${String(hit.popularity)} of 100`}
                     className="h-1.5 overflow-hidden rounded-full bg-muted"
                   >
                     <div
                       className="h-full rounded-full bg-chart-1"
-                      style={{ width: `${String(hit.costIndex)}%` }}
+                      style={{ width: `${String(hit.popularity)}%` }}
                     />
                   </div>
-                  <p className="mt-1 text-right text-xs text-muted-foreground">cost</p>
+                  <p className="mt-1 text-right text-xs text-muted-foreground">popularity</p>
                 </div>
               )}
 
               {/* Which arm hit. This is the hybrid search made visible. */}
               <div className="hidden shrink-0 gap-1 md:flex">
-                {hit.matched_by.map((arm) => (
+                {hit.matchedBy.map((arm) => (
                   <span
                     key={arm}
-                    title={`Matched by ${ARM_LABEL[arm].toLowerCase()} search`}
+                    title={`Matched by ${armLabel(arm).toLowerCase()} search`}
                     className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground"
                   >
-                    {ARM_LABEL[arm]}
+                    {armLabel(arm)}
                   </span>
                 ))}
               </div>
