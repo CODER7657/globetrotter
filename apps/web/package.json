@@ -8,6 +8,7 @@
     "prebuild": "pnpm --filter @globetrotter/design-system build",
     "build": "vite build",
     "preview": "vite preview",
+    "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
@@ -27,6 +28,7 @@
     "@vitejs/plugin-react": "^6.1.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.7.2",
-    "vite": "^8.2.2"
+    "vite": "^8.2.2",
+    "vitest": "^2.1.8"
   }
 }
