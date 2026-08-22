@@ -289,9 +289,28 @@ describe("auth", () => {
     it("rejects a missing, malformed, or tampered token identically", async () => {
       const user = await registerUser(app);
 
-      // Flip the last character of the signature.
-      const last = user.accessToken.slice(-1);
-      const tampered = user.accessToken.slice(0, -1) + (last === "A" ? "B" : "A");
+      // Tamper a character in the MIDDLE of the signature, not the last one.
+      //
+      // An HS256 signature is 32 bytes, which is 43 base64url characters. The
+      // final character carries only 4 significant bits — the trailing 2 are
+      // discarded on decode — so A, B, C and D all decode to the same byte.
+      // Flipping the last char therefore changes NOTHING whenever the signature
+      // happens to end in one of those four, the "tampered" token verifies
+      // correctly, and this test fails with a 200. One run in sixteen, on a
+      // security assertion: it reads as a breach and is not one.
+      //
+      // Every character away from the boundary contributes all 6 of its bits,
+      // so mutating one there always changes the signature.
+      const [header, payload, signature] = user.accessToken.split(".");
+      const mid = Math.floor(signature!.length / 2);
+      const tampered = [
+        header,
+        payload,
+        signature!.slice(0, mid) +
+          (signature![mid] === "A" ? "B" : "A") +
+          signature!.slice(mid + 1),
+      ].join(".");
+      expect(tampered).not.toBe(user.accessToken);
 
       const cases = [
         { headers: {} },
