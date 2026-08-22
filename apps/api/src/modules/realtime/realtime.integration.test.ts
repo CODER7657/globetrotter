@@ -5,7 +5,7 @@ import {
   buildTestApp,
   closeHarness,
   registerUser,
-  seedCity,
+  pickCity,
   truncateAll,
 } from "../../test/harness.js";
 import type { FastifyInstance } from "fastify";
@@ -144,7 +144,7 @@ describe("realtime", () => {
     it("delivers a NOTIFY raised by a write from an entirely separate connection", async () => {
       const user = await registerUser(app);
       const tripId = await makeTrip(user.id);
-      const cityId = await seedCity("Jaipur", "IN");
+      const cityId = await pickCity();
 
       const ws = await open(`/trips/${tripId}/live`);
       ws.send(JSON.stringify({ type: "auth", token: user.accessToken }));
@@ -171,7 +171,7 @@ describe("realtime", () => {
     it("carries ids only — never row data", async () => {
       const user = await registerUser(app);
       const tripId = await makeTrip(user.id);
-      const cityId = await seedCity("Udaipur", "IN");
+      const cityId = await pickCity();
 
       const ws = await open(`/trips/${tripId}/live`);
       ws.send(JSON.stringify({ type: "auth", token: user.accessToken }));
