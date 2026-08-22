@@ -13,6 +13,8 @@
 
 BEGIN;
 
+TRUNCATE test.results;   -- each suite reports only its own assertions
+
 -- ------------------------------------------------------------- fixtures ---
 INSERT INTO currencies(code, name, symbol) VALUES
   ('EUR','Euro','EUR'), ('USD','US Dollar','USD')
@@ -20,10 +22,11 @@ ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO countries(code, name, region, currency_code)
   VALUES ('FR','France','Europe','EUR') ON CONFLICT (code) DO NOTHING;
+-- Fixture cities use zz- slugs so they can never collide with seeded cities.
 
 INSERT INTO cities(id, country_code, name, slug, latitude, longitude, timezone) VALUES
-  ('11111111-1111-7111-8111-111111111111','FR','Paris','paris',48.85660,2.35220,'Europe/Paris'),
-  ('22222222-2222-7222-8222-222222222222','FR','Lyon','lyon', 45.76400,4.83570,'Europe/Paris')
+  ('11111111-1111-7111-8111-111111111111','FR','zz Test City A','zz-test-city-a',48.85660,2.35220,'Europe/Paris'),
+  ('22222222-2222-7222-8222-222222222222','FR','zz Test City B','zz-test-city-b',45.76400,4.83570,'Europe/Paris')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO users(id, email, password_hash, display_name)
