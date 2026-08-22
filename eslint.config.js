@@ -30,6 +30,11 @@ export default tseslint.config(
         { type: "service", pattern: "**/modules/*/*.service.ts", mode: "file" },
         { type: "repository", pattern: "**/modules/*/*.repository.ts", mode: "file" },
         { type: "schema", pattern: "**/modules/*/*.schema.ts", mode: "file" },
+        // A listener is a long-lived subscriber to something outside the request
+        // cycle (Postgres LISTEN/NOTIFY, issue #7). It sits beside the SQL layer:
+        // it may reach the database, and nothing above it may reach into it
+        // except the routes that own its lifecycle.
+        { type: "listener", pattern: "**/modules/*/*.listener.ts", mode: "file" },
         { type: "core", pattern: "**/src/core/*.ts", mode: "file" },
         { type: "db", pattern: "**/src/db/*.ts", mode: "file" },
         // config is its own element, not part of the composition root: any
@@ -47,7 +52,7 @@ export default tseslint.config(
           message: "${file.type} must not import ${dependency.type} — see issue #13",
           rules: [
             // HTTP layer: talks to services and shared schemas only.
-            { from: "routes", allow: ["service", "schema", "core", "db", "config"] },
+            { from: "routes", allow: ["service", "schema", "core", "db", "config", "listener"] },
             // Business layer: talks to repositories. Never to Fastify.
             { from: "service", allow: ["repository", "schema", "core", "db", "config"] },
             // SQL layer: knows the database and nothing above it.
@@ -56,12 +61,13 @@ export default tseslint.config(
             { from: "config", allow: [] },
             { from: "core", allow: ["core", "db", "config"] },
             { from: "db", allow: ["db", "config"] },
+            { from: "listener", allow: ["db", "config", "core"] },
             // The composition root is allowed to see everything — that is its job.
             {
               from: "composition",
               allow: [
                 "routes", "service", "repository", "schema",
-                "core", "db", "config", "composition",
+                "core", "db", "config", "composition", "listener",
               ],
             },
           ],

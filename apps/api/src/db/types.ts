@@ -172,6 +172,14 @@ export interface TripSharesTable {
   view_count: Generated<number>;
 }
 
+/** Ephemeral, UNLOGGED. Who is looking at a trip right now (migration 009). */
+export interface TripPresenceTable {
+  trip_id: string;
+  user_id: string;
+  connection: string;
+  last_seen: Generated<Timestamp>;
+}
+
 export interface Database {
   users: UsersTable;
   refresh_token_families: RefreshTokenFamiliesTable;
@@ -183,4 +191,5 @@ export interface Database {
   trip_activities: TripActivitiesTable;
   trip_collaborators: TripCollaboratorsTable;
   trip_shares: TripSharesTable;
+  trip_presence: TripPresenceTable;
 }

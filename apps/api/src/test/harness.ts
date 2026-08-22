@@ -170,9 +170,13 @@ export async function truncateAll(): Promise<void> {
   // them CASCADEs through every trip and leaves the catalogue empty for the
   // rest of the run.
   await admin().query(
+    // Deliberately NOT `cities`: truncating it CASCADEs away activities,
+    // activity_schedules and city_cost_index — the seeded catalogue that
+    // db/tests/003 asserts against. seedCity() generates a unique slug per
+    // call, so test cities never collide and never need clearing.
     `TRUNCATE TABLE
-       trip_activities, trip_stops, trip_collaborators, trip_shares,
-       trips, refresh_tokens, refresh_token_families, users
+       trip_presence, trip_activities, trip_stops, trip_collaborators,
+       trip_shares, trips, refresh_tokens, refresh_token_families, users
      RESTART IDENTITY CASCADE`,
   );
 }
