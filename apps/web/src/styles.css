@@ -30,3 +30,27 @@
     outline-offset: 2px;
   }
 }
+
+@layer utilities {
+  /*
+   * Staggered entrance. Built from the motion tokens, so the reduced-motion
+   * block in theme.css collapses it to 1ms without this knowing about it.
+   *
+   * `backwards` matters: without it an element with a delay paints at its final
+   * opacity for the length of the delay, then jumps back to start.
+   */
+  @keyframes gt-rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .gt-rise {
+    animation: gt-rise var(--gt-duration-base) var(--gt-easing-out) backwards;
+  }
+}

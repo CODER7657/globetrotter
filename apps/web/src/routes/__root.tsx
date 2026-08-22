@@ -1,5 +1,6 @@
 import { QueryClientProvider } from '@tanstack/react-query'
-import { Outlet, createRootRoute, useRouterState } from '@tanstack/react-router'
+import { useEffect } from 'react'
+import { Outlet, createRootRoute, useNavigate, useRouterState } from '@tanstack/react-router'
 import { AppShell } from '../components/app-shell.js'
 import { ErrorBoundary } from '../components/error-boundary.js'
 import { Button, EmptyState, ErrorState, SkeletonText } from '../components/primitives.js'
@@ -40,9 +41,24 @@ function Providers({ children }: { readonly children: React.ReactNode }) {
   )
 }
 
+/** Public routes that render without a session and without the app shell. */
+const PUBLIC_ROUTES = new Set([...BARE_ROUTES, '/welcome', '/kitchen-sink'])
+
 function Shell() {
   const pathname = useRouterState({ select: (state) => state.location.pathname })
+  const navigate = useNavigate()
   const { status } = useAuth()
+
+  const isPublic = PUBLIC_ROUTES.has(pathname)
+
+  // Guard. Without this an unauthenticated visitor sits on a dashboard whose
+  // queries are disabled, so the skeletons never resolve and nothing ever says
+  // why. `replace` keeps the dead route out of history.
+  useEffect(() => {
+    if (status === 'anonymous' && !isPublic) {
+      void navigate({ to: '/login', replace: true })
+    }
+  }, [status, isPublic, navigate])
 
   if (BARE_ROUTES.has(pathname)) {
     return (
@@ -55,7 +71,8 @@ function Shell() {
   // Hold the shell until the refresh call resolves. Rendering the app and then
   // swapping to a login screen is the flash #25 exists to prevent; rendering a
   // login screen first is worse, because a signed-in user sees it every reload.
-  if (status === 'loading') {
+  // `anonymous` is held too, so the redirect above lands before anything paints.
+  if (!isPublic && status !== 'authenticated') {
     return (
       <div className="mx-auto max-w-2xl space-y-4 p-8">
         <SkeletonText lines={4} />

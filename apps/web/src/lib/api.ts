@@ -1,4 +1,8 @@
-import { ProblemDetailsSchema, type ProblemDetails } from '@globetrotter/contracts'
+import {
+  ProblemDetailsSchema,
+  type Paginated,
+  type ProblemDetails,
+} from '@globetrotter/contracts'
 
 /**
  * The one place that knows the wire format.
@@ -70,10 +74,12 @@ async function readProblem(response: Response): Promise<ProblemDetails | null> {
 }
 
 /**
+ * The raw body, with no unwrapping.
+ *
  * `credentials: 'include'` on every call — the refresh token is an httpOnly
  * cookie the browser must send and JavaScript must never read.
  */
-export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+export async function rawRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, accessToken, signal } = options
 
   const headers: Record<string, string> = { Accept: 'application/json' }
@@ -99,11 +105,33 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 
   if (response.status === 204) return undefined as T
 
-  const payload: unknown = await response.json()
-  // Unwrap the envelope. A response without `data` is returned as-is so this
-  // stays usable for any endpoint that does not use one.
+  return (await response.json()) as T
+}
+
+/**
+ * A single resource: unwraps the `{ data: T }` envelope.
+ *
+ * A body without `data` is returned as-is, so this stays usable for any
+ * endpoint that does not use an envelope.
+ */
+export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const payload = await rawRequest<unknown>(path, options)
   if (typeof payload === 'object' && payload !== null && 'data' in payload) {
     return (payload as { data: T }).data
   }
   return payload as T
+}
+
+/**
+ * A list: `{ data: T[], page: { nextCursor, hasMore } }`, kept intact.
+ *
+ * `request` would unwrap `data` and discard the cursor, which is how a "load
+ * more" silently stops working. The cursor is an opaque keyset token — hand it
+ * back verbatim, never parse it.
+ */
+export async function requestPage<T>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<Paginated<T>> {
+  return rawRequest<Paginated<T>>(path, options)
 }
