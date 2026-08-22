@@ -68,7 +68,7 @@ export function useStops(tripId: string) {
   const { status } = useAuth()
 
   return useQuery<Paginated<TripStop>>({
-    queryKey: ['stops', tripId],
+    queryKey: ['trip', tripId, 'stops'],
     queryFn: () => getPage<TripStop>(`/trips/${tripId}/stops?limit=100`),
     enabled: status === 'authenticated' && tripId !== '',
   })
@@ -89,7 +89,7 @@ export function useCost(tripId: string) {
   const { status } = useAuth()
 
   return useQuery<CostBreakdown>({
-    queryKey: ['cost', tripId],
+    queryKey: ['trip', tripId, 'cost'],
     queryFn: () => get<CostBreakdown>(`/trips/${tripId}/cost`),
     enabled: status === 'authenticated' && tripId !== '',
     // The endpoint ships in #70. Until it merges this 404s; a retry storm
@@ -125,7 +125,10 @@ export function useSearch(query: string, kind: 'all' | 'city' | 'activity' = 'ci
 export function useReorderStops(tripId: string) {
   const { send } = useApi()
   const queryClient = useQueryClient()
-  const key = ['stops', tripId]
+  // These exact keys are the contract with lib/realtime.ts (#68): a remote
+  // change invalidates ['trip', id, 'stops'] and ['trip', id, 'cost'].
+  // Using ['stops', id] instead makes live sync silently do nothing.
+  const key = ['trip', tripId, 'stops']
 
   return useMutation({
     mutationFn: (body: ReorderStopsBody) =>
@@ -154,7 +157,7 @@ export function useReorderStops(tripId: string) {
 
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: key })
-      void queryClient.invalidateQueries({ queryKey: ['cost', tripId] })
+      void queryClient.invalidateQueries({ queryKey: ['trip', tripId, 'cost'] })
     },
   })
 }

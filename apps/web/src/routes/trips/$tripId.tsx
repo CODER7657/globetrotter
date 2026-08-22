@@ -20,7 +20,9 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
 import { Button, ErrorState, Skeleton, SkeletonText } from '../../components/primitives.js'
 import { useToast } from '../../components/toast.js'
+import { useAuth } from '../../lib/auth.js'
 import { conflictMessage } from '../../lib/constraints.js'
+import { useTripChannel } from '../../lib/realtime.js'
 import { CostPanel } from './-cost-panel.js'
 import { StopPicker } from './-stop-picker.js'
 import { useCityNames } from './-city-names.js'
@@ -89,6 +91,18 @@ function StopRow({
 function Builder() {
   const { tripId } = Route.useParams()
   const { toast } = useToast()
+  const { user, getAccessToken } = useAuth()
+
+  // Live collaboration. The channel invalidates ['trip', id], ['trip', id,
+  // 'stops'] and ['trip', id, 'cost'] on a remote change — the exact keys
+  // lib/trips.ts uses, which is the whole reason sync works without any
+  // cache-patching here. It also drops the echo of our own writes, so a save
+  // cannot round-trip and overwrite what the user typed in the meantime.
+  const channel = useTripChannel({
+    tripId,
+    token: getAccessToken(),
+    selfId: user?.id ?? null,
+  })
 
   const trip = useTrip(tripId)
   const stopsQuery = useStops(tripId)
@@ -161,7 +175,10 @@ function Builder() {
             {stops.length} {stops.length === 1 ? 'stop' : 'stops'}
           </p>
         </div>
-        <SaveState pending={reorder.isPending} savedAt={savedAt} />
+        <div className="flex items-center gap-4">
+          <LiveState status={channel.status} error={channel.error} />
+          <SaveState pending={reorder.isPending} savedAt={savedAt} />
+        </div>
       </header>
 
       {/* Three panes: picker · day canvas · live cost. Stacks on mobile. */}
@@ -205,6 +222,40 @@ function Builder() {
         <CostPanel tripId={tripId} />
       </div>
     </div>
+  )
+}
+
+const LIVE_LABEL: Readonly<Record<string, string>> = {
+  idle: '',
+  connecting: 'Connecting…',
+  authenticating: 'Connecting…',
+  live: 'Live',
+  reconnecting: 'Reconnecting…',
+  failed: 'Offline',
+}
+
+/**
+ * Collaboration status. `failed` carries an actionable message from the client
+ * (e.g. an expired session), so it is shown rather than flattened to "offline".
+ */
+function LiveState({ status, error }: { readonly status: string; readonly error: string | null }) {
+  if (status === 'idle') return null
+  const live = status === 'live'
+
+  return (
+    <p
+      role="status"
+      aria-live="polite"
+      className="flex items-center gap-1.5 text-sm text-muted-foreground"
+      title={error ?? undefined}
+    >
+      <span
+        aria-hidden="true"
+        className="inline-block h-1.5 w-1.5 rounded-full"
+        style={{ background: live ? 'var(--chart-4)' : 'var(--muted-foreground)' }}
+      />
+      {status === 'failed' && error !== null ? error : LIVE_LABEL[status]}
+    </p>
   )
 }
 
