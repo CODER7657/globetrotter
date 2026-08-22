@@ -1,0 +1,25 @@
+# Minimal compose for the backend skeleton (issue #13).
+# @pavan's issue #9 supersedes this with the full stack (api, mailhog, ollama).
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: globetrotter-db
+    environment:
+      POSTGRES_USER: globetrotter
+      POSTGRES_PASSWORD: globetrotter
+      POSTGRES_DB: globetrotter
+    ports:
+      - "5433:5432"
+    volumes:
+      # Postgres 18+ expects a single mount at /var/lib/postgresql (the data
+      # itself lands in a subdirectory), so that pg_upgrade --link can work
+      # without crossing a mount boundary. Mounting .../data breaks startup.
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U globetrotter -d globetrotter"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  db-data:

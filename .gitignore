@@ -1,0 +1,10 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.env
+.env.local
+.DS_Store
+
+# Local, per-developer tooling state
+.claude/settings.local.json

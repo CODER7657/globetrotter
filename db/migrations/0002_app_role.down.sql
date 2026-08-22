@@ -1,0 +1,11 @@
+-- Down migration for 0002_app_role.
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  REVOKE USAGE, SELECT ON SEQUENCES FROM globetrotter_app;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLES FROM globetrotter_app;
+
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM globetrotter_app;
+REVOKE USAGE ON SCHEMA public FROM globetrotter_app;
+
+DROP ROLE IF EXISTS globetrotter_app;

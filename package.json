@@ -1,0 +1,30 @@
+{
+  "name": "globetrotter",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint .",
+    "test": "pnpm -r test",
+    "db:up": "docker compose up -d db",
+    "db:migrate": "node scripts/migrate.mjs up",
+    "dev": "pnpm --filter @globetrotter/api dev",
+    "db:rollback": "node scripts/migrate.mjs down",
+    "db:status": "node scripts/migrate.mjs status"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "eslint": "^9.17.0",
+    "eslint-plugin-boundaries": "^5.0.1",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.1",
+    "pg": "^8.13.1",
+    "@eslint/js": "^9.17.0",
+    "eslint-import-resolver-typescript": "^3.7.0"
+  }
+}
