@@ -4,3 +4,4 @@ export * from "./errors.js";
 export * from "./pagination.js";
 export * from "./auth.js";
 export * from "./trip.js";
+export * from "./share.js";

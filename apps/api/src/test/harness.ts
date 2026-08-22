@@ -39,7 +39,7 @@ export async function buildTestApp(
 ): Promise<FastifyInstance> {
   const config = loadConfig({
     NODE_ENV: "test",
-    LOG_LEVEL: "silent",
+    LOG_LEVEL: process.env["TEST_LOG_LEVEL"] ?? "silent",
     APP_DATABASE_URL: TEST_DATABASE_URL,
     CORS_ORIGINS: "http://localhost:5173",
     JWT_SECRET: "test-only-secret-must-be-at-least-32-chars-long",
@@ -175,7 +175,7 @@ export async function truncateAll(): Promise<void> {
     // db/tests/003 asserts against. seedCity() generates a unique slug per
     // call, so test cities never collide and never need clearing.
     `TRUNCATE TABLE
-       trip_presence, trip_activities, trip_stops, trip_collaborators,
+       trip_events, trip_presence, trip_activities, trip_stops, trip_collaborators,
        trip_shares, trips, refresh_tokens, refresh_token_families, users
      RESTART IDENTITY CASCADE`,
   );
