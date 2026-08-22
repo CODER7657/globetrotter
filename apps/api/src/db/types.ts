@@ -116,8 +116,15 @@ export interface TripsTable {
   base_currency: string;
   budget_cap: string | null;
   cover_image_url: string | null;
-  /** Optimistic concurrency token. Starts at 1, bumped by trigger. */
-  version: ColumnType<number, never, never>;
+  /**
+   * Optimistic concurrency token. Starts at 1.
+   *
+   * Writable on UPDATE, unlike the other database-managed columns. The
+   * notify_trip_change trigger bumps it for stops and activities but skips
+   * trips to avoid re-firing itself, so a trip-level edit has to advance it
+   * explicitly. Never supplied on INSERT — the column default owns that.
+   */
+  version: ColumnType<number, never, number>;
   created_at: Managed;
   updated_at: Managed;
   deleted_at: Timestamp | null;
@@ -152,6 +159,31 @@ export interface TripActivitiesTable {
   notes: string | null;
   created_at: Managed;
   updated_at: Managed;
+}
+
+/**
+ * The `trip_cost_summary` VIEW (011), not a table.
+ *
+ * `security_invoker = true`, so it runs as the caller and the trips policies
+ * apply verbatim — the API selects from it with no `WHERE owner_id` at all.
+ * Filtering by owner by hand would be both a leak risk and wrong: it would
+ * hide trips a collaborator legitimately sees.
+ */
+export interface TripCostSummaryView {
+  trip_id: string;
+  owner_id: string;
+  name: string;
+  status: TripStatus;
+  visibility: TripVisibility;
+  base_currency: string;
+  budget_cap: string | null;
+  cover_image_url: string | null;
+  start_date: string;
+  end_date: string;
+  total_days: number;
+  stop_count: number;
+  activity_count: number;
+  total_cost: string;
 }
 
 export interface TripCollaboratorsTable {
@@ -190,6 +222,7 @@ export interface Database {
   trip_stops: TripStopsTable;
   trip_activities: TripActivitiesTable;
   trip_collaborators: TripCollaboratorsTable;
+  trip_cost_summary: TripCostSummaryView;
   trip_shares: TripSharesTable;
   trip_presence: TripPresenceTable;
 }
