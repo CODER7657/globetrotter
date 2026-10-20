@@ -106,7 +106,7 @@ export default tseslint.config(
     // Plain Node scripts: no TS project, but the Node globals are real.
     files: ["scripts/**/*.mjs"],
     languageOptions: {
-      globals: { process: "readonly", console: "readonly", Buffer: "readonly" },
+      globals: { process: "readonly", console: "readonly", Buffer: "readonly", fetch: "readonly" },
     },
   },
 
