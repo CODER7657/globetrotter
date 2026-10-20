@@ -198,7 +198,6 @@ export function useScrollRefresh(deps: readonly unknown[]): void {
     return () => {
       window.cancelAnimationFrame(id);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 }
 
